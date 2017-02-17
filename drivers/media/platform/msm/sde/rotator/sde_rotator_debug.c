@@ -1102,6 +1102,8 @@ static ssize_t sde_rotator_debug_base_reg_write(struct file *file,
 
 	mutex_lock(&dbg->buflock);
 
+	mutex_lock(&dbg->buflock);
+
 	/* Enable Clock for register access */
 	sde_rotator_clk_ctrl(dbg->mgr, true);
 
