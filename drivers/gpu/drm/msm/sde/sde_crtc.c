@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2019, 2021 The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -519,6 +519,7 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 		return;
 	}
 	priv = sde_kms->dev->dev_private;
+	SDE_ATRACE_BEGIN("crtc_frame_event");
 
 	SDE_DEBUG("crtc%d event:%u ts:%lld\n", crtc->base.id, fevent->event,
 			ktime_to_ns(fevent->ts));
@@ -558,6 +559,7 @@ static void sde_crtc_frame_event_work(struct kthread_work *work)
 	spin_lock_irqsave(&sde_crtc->spin_lock, flags);
 	list_add_tail(&fevent->list, &sde_crtc->frame_event_list);
 	spin_unlock_irqrestore(&sde_crtc->spin_lock, flags);
+	SDE_ATRACE_END("crtc_frame_event");
 }
 
 static void sde_crtc_frame_event_cb(void *data, u32 event)

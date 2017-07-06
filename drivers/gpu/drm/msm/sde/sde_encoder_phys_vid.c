@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2018, 2021 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,6 +16,7 @@
 #include "sde_hw_interrupts.h"
 #include "sde_core_irq.h"
 #include "sde_formats.h"
+#include "sde_trace.h"
 
 #define SDE_DEBUG_VIDENC(e, fmt, ...) SDE_DEBUG("enc%d intf%d " fmt, \
 		(e) && (e)->base.parent ? \
@@ -292,6 +293,7 @@ static void sde_encoder_phys_vid_vblank_irq(void *arg, int irq_idx)
 
 	phys_enc = &vid_enc->base;
 	hw_ctl = phys_enc->hw_ctl;
+	SDE_ATRACE_BEGIN("vblank_irq");
 
 	if (phys_enc->parent_ops.handle_vblank_virt)
 		phys_enc->parent_ops.handle_vblank_virt(phys_enc->parent,
@@ -318,6 +320,7 @@ static void sde_encoder_phys_vid_vblank_irq(void *arg, int irq_idx)
 
 	/* Signal any waiting atomic commit thread */
 	wake_up_all(&phys_enc->pending_kickoff_wq);
+	SDE_ATRACE_END("vblank_irq");
 }
 
 static void sde_encoder_phys_vid_underrun_irq(void *arg, int irq_idx)

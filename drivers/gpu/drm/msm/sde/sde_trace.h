@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2018, 2021 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -141,7 +141,7 @@ TRACE_EVENT(sde_encoder_underrun,
 		__entry->underrun_cnt)
 );
 
-TRACE_EVENT(sde_mark_write,
+TRACE_EVENT(tracing_mark_write,
 	TP_PROTO(int pid, const char *name, bool trace_begin),
 	TP_ARGS(pid, name, trace_begin),
 	TP_STRUCT__entry(
@@ -196,8 +196,8 @@ TRACE_EVENT(sde_evtlog,
 			__entry->tag_id, __entry->value1, __entry->value2)
 )
 
-#define SDE_ATRACE_END(name) trace_sde_mark_write(current->tgid, name, 0)
-#define SDE_ATRACE_BEGIN(name) trace_sde_mark_write(current->tgid, name, 1)
+#define SDE_ATRACE_END(name) trace_tracing_mark_write(current->tgid, name, 0)
+#define SDE_ATRACE_BEGIN(name) trace_tracing_mark_write(current->tgid, name, 1)
 #define SDE_ATRACE_FUNC() SDE_ATRACE_BEGIN(__func__)
 
 #define SDE_ATRACE_INT(name, value) \

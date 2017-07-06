@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2018, 2021 The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -920,11 +920,13 @@ void sde_encoder_prepare_for_kickoff(struct drm_encoder *drm_enc)
 	SDE_EVT32(DRMID(drm_enc));
 
 	/* prepare for next kickoff, may include waiting on previous kickoff */
+	SDE_ATRACE_BEGIN("enc_prepare_for_kickoff");
 	for (i = 0; i < sde_enc->num_phys_encs; i++) {
 		phys = sde_enc->phys_encs[i];
 		if (phys && phys->ops.prepare_for_kickoff)
 			phys->ops.prepare_for_kickoff(phys);
 	}
+	SDE_ATRACE_END("enc_prepare_for_kickoff");
 
 	if (sde_enc->cur_master && sde_enc->cur_master->connector) {
 		conn_mas = sde_enc->cur_master->connector;
