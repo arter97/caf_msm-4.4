@@ -1760,11 +1760,13 @@ static void wiphy_update_regulatory(struct wiphy *wiphy,
 	if (ignore_reg_update(wiphy, initiator)) {
 		/*
 		 * Regulatory updates set by CORE are ignored for custom
-		 * regulatory cards. Let us notify the changes to the driver,
+		 * regulatory cards and for self managed regulatory.
+		 * Let us notify the changes to the driver,
 		 * as some drivers used this to restore its orig_* reg domain.
 		 */
-		if (initiator == NL80211_REGDOM_SET_BY_CORE &&
-		    wiphy->regulatory_flags & REGULATORY_CUSTOM_REG)
+		if ((initiator == NL80211_REGDOM_SET_BY_CORE &&
+		     wiphy->regulatory_flags & REGULATORY_CUSTOM_REG) ||
+		    (wiphy->regulatory_flags & REGULATORY_WIPHY_SELF_MANAGED))
 			reg_call_notifier(wiphy, lr);
 		return;
 	}
@@ -2247,7 +2249,7 @@ out_free:
 	reg_free_request(reg_request);
 }
 
-static bool reg_only_self_managed_wiphys(void)
+static bool reg_only_self_managed_wiphys(struct regulatory_request *reg_request)
 {
 	struct cfg80211_registered_device *rdev;
 	struct wiphy *wiphy;
@@ -2257,10 +2259,12 @@ static bool reg_only_self_managed_wiphys(void)
 
 	list_for_each_entry(rdev, &cfg80211_rdev_list, list) {
 		wiphy = &rdev->wiphy;
-		if (wiphy->regulatory_flags & REGULATORY_WIPHY_SELF_MANAGED)
+		if (wiphy->regulatory_flags & REGULATORY_WIPHY_SELF_MANAGED) {
 			self_managed_found = true;
-		else
+			reg_call_notifier(wiphy, reg_request);
+		} else {
 			return false;
+		}
 	}
 
 	/* make sure at least one self-managed wiphy exists */
@@ -2298,7 +2302,7 @@ static void reg_process_pending_hints(void)
 
 	spin_unlock(&reg_requests_lock);
 
-	if (reg_only_self_managed_wiphys()) {
+	if (reg_only_self_managed_wiphys(reg_request)) {
 		reg_free_request(reg_request);
 		return;
 	}
