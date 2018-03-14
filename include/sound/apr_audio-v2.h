@@ -7641,6 +7641,23 @@ struct asm_dec_out_chan_map_param_v2 {
 	u8                  channel_mapping[MAX_CHAN_MAP_CHANNELS_V2];
 } __packed;
 
+/* Payload of the #ASM_PARAM_ID_DEC_OUTPUT_CHAN_MAP parameter in the
+ * #ASM_STREAM_CMD_SET_ENCDEC_PARAM command.
+ */
+struct asm_dec_out_chan_map_param_v2 {
+	struct apr_hdr hdr;
+	struct asm_stream_cmd_set_encdec_param  encdec;
+	u32                 num_channels;
+/* Number of decoder output channels.
+ * Supported values: 0 to #MAX_CHAN_MAP_CHANNELS_V2
+ *
+ * A value of 0 indicates native channel mapping, which is valid
+ * only for NT mode. This means the output of the decoder is to be
+ * preserved as is.
+ */
+	u8                  channel_mapping[MAX_CHAN_MAP_CHANNELS_V2];
+} __packed;
+
 #define ASM_STREAM_CMD_OPEN_WRITE_COMPRESSED  0x00010D84
 
 /* Bitmask for the IEC 61937 enable flag.*/
