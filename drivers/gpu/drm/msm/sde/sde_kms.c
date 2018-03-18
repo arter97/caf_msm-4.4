@@ -69,6 +69,7 @@
  *
  *	This is disabled by default.
  */
+
 static bool sdecustom = true;
 module_param(sdecustom, bool, 0400);
 MODULE_PARM_DESC(sdecustom, "Enable customizations for sde clients");
@@ -345,8 +346,9 @@ static void sde_kms_prepare_commit(struct msm_kms *kms,
 
 	if (sde_kms->splash_info.handoff)
 		sde_splash_clean_up_exit_lk(kms);
-
-	sde_power_resource_enable(&priv->phandle, sde_kms->core_client, true);
+	else
+		sde_power_resource_enable(&priv->phandle,
+				sde_kms->core_client, true);
 }
 
 static void sde_kms_commit(struct msm_kms *kms,
