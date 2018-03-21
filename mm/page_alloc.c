@@ -2521,7 +2521,7 @@ static bool __zone_watermark_ok(struct zone *z, unsigned int order,
 
 #ifdef CONFIG_CMA
 	/* If allocation can't use CMA areas don't use free CMA pages */
-	if (!(alloc_flags & ALLOC_CMA))
+	if ((!(alloc_flags & ALLOC_CMA)) && (!alloc_harder))
 		free_pages -= zone_page_state(z, NR_FREE_CMA_PAGES);
 #endif
 
