@@ -50,9 +50,6 @@ struct hdmi {
 
 	const struct hdmi_platform_config *config;
 
-	/* hpd state: */
-	bool hpd_off;
-
 	/* audio state: */
 	struct hdmi_audio audio;
 

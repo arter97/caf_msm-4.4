@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -44,11 +44,6 @@ static const struct drm_prop_enum_list e_power_mode[] = {
 	{SDE_MODE_DPMS_LP1,     "LP1"},
 	{SDE_MODE_DPMS_LP2,     "LP2"},
 	{SDE_MODE_DPMS_OFF,     "OFF"},
-};
-
-static const struct drm_prop_enum_list hpd_clock_state[] = {
-	{SDE_MODE_HPD_ON,      "ON"},
-	{SDE_MODE_HPD_OFF,     "OFF"},
 };
 
 int sde_connector_get_info(struct drm_connector *connector,
@@ -480,9 +475,6 @@ static int sde_connector_atomic_set_property(struct drm_connector *connector,
 		_sde_connector_update_power_locked(c_conn);
 		mutex_unlock(&c_conn->lock);
 		break;
-	case CONNECTOR_PROP_HPD_OFF:
-		c_conn->hpd_mode = val;
-		break;
 	default:
 		break;
 	}
@@ -827,7 +819,6 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 	c_conn->display = display;
 
 	c_conn->dpms_mode = DRM_MODE_DPMS_ON;
-	c_conn->hpd_mode = SDE_MODE_HPD_ON;
 	c_conn->lp_mode = 0;
 	c_conn->last_panel_power_mode = SDE_MODE_DPMS_ON;
 
@@ -954,11 +945,6 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 			0, 0, e_power_mode,
 			ARRAY_SIZE(e_power_mode),
 			CONNECTOR_PROP_LP, 0);
-
-	msm_property_install_enum(&c_conn->property_info, "HPD_OFF",
-			DRM_MODE_PROP_ATOMIC, 0, hpd_clock_state,
-			ARRAY_SIZE(hpd_clock_state),
-			CONNECTOR_PROP_HPD_OFF, 0);
 
 	rc = msm_property_install_get_status(&c_conn->property_info);
 	if (rc) {
