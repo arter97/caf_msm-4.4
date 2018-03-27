@@ -2482,6 +2482,15 @@ static int msm_pcm_add_channel_mixer_output_map_controls(
 		channel_mixer_output_map_control[0].name = playback_mixer_str;
 		channel_mixer_output_map_control[0].private_value =
 				(rtd->dai_link->be_id) | (session_type << 8);
+		ret = snd_soc_add_platform_controls(rtd->platform,
+				&channel_mixer_output_map_control[0],
+				1);
+		if (ret < 0) {
+			pr_err("%s: failed add platform ctl, err = %d\n",
+				 __func__, ret);
+			ret = -EINVAL;
+			goto done;
+		}
 	}
 
 	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream != NULL) {
@@ -2499,17 +2508,15 @@ static int msm_pcm_add_channel_mixer_output_map_controls(
 		channel_mixer_output_map_control[1].name = capture_mixer_str;
 		channel_mixer_output_map_control[1].private_value =
 				(rtd->dai_link->be_id) | (session_type << 8);
-	}
-
-	ret = snd_soc_add_platform_controls(rtd->platform,
-					channel_mixer_output_map_control,
-					ARRAY_SIZE
-					(channel_mixer_output_map_control));
-	if (ret < 0) {
-		pr_err("%s: failed add platform ctl, err = %d\n",
-			 __func__, ret);
-		ret = -EINVAL;
-		goto done;
+		ret = snd_soc_add_platform_controls(rtd->platform,
+				&channel_mixer_output_map_control[1],
+				1);
+		if (ret < 0) {
+			pr_err("%s: failed add platform ctl, err = %d\n",
+				 __func__, ret);
+			ret = -EINVAL;
+			goto done;
+		}
 	}
 
 done:
@@ -2577,6 +2584,15 @@ static int msm_pcm_add_channel_mixer_input_map_controls(
 		channel_mixer_input_map_control[0].name = playback_mixer_str;
 		channel_mixer_input_map_control[0].private_value =
 				(rtd->dai_link->be_id) | (session_type << 8);
+		ret = snd_soc_add_platform_controls(rtd->platform,
+					&channel_mixer_input_map_control[0],
+					1);
+		if (ret < 0) {
+			pr_err("%s: failed add platform ctl, err = %d\n",
+				 __func__, ret);
+			ret = -EINVAL;
+			goto done;
+		}
 	}
 
 	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream != NULL) {
@@ -2594,17 +2610,15 @@ static int msm_pcm_add_channel_mixer_input_map_controls(
 		channel_mixer_input_map_control[1].name = capture_mixer_str;
 		channel_mixer_input_map_control[1].private_value =
 				(rtd->dai_link->be_id) | (session_type << 8);
-	}
-
-	ret = snd_soc_add_platform_controls(rtd->platform,
-					channel_mixer_input_map_control,
-					ARRAY_SIZE
-					(channel_mixer_input_map_control));
-	if (ret < 0) {
-		pr_err("%s: failed add platform ctl, err = %d\n",
-			 __func__, ret);
-		ret = -EINVAL;
-		goto done;
+		ret = snd_soc_add_platform_controls(rtd->platform,
+					&channel_mixer_input_map_control[1],
+					1);
+		if (ret < 0) {
+			pr_err("%s: failed add platform ctl, err = %d\n",
+				 __func__, ret);
+			ret = -EINVAL;
+			goto done;
+		}
 	}
 
 done:
@@ -2683,6 +2697,15 @@ static int msm_pcm_add_channel_mixer_cfg_controls(
 		channel_mixer_cfg_control[0].name = playback_mixer_str;
 		channel_mixer_cfg_control[0].private_value =
 				(rtd->dai_link->be_id) | (session_type << 8);
+		ret = snd_soc_add_platform_controls(rtd->platform,
+						&channel_mixer_cfg_control[0],
+						1);
+		if (ret < 0) {
+			pr_err("%s: failed add platform ctl, err = %d\n",
+				 __func__, ret);
+			ret = -EINVAL;
+			goto done;
+		}
 	}
 
 	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream != NULL) {
@@ -2700,17 +2723,15 @@ static int msm_pcm_add_channel_mixer_cfg_controls(
 		channel_mixer_cfg_control[1].name = capture_mixer_str;
 		channel_mixer_cfg_control[1].private_value =
 				(rtd->dai_link->be_id) | (session_type << 8);
-	}
-
-	ret = snd_soc_add_platform_controls(rtd->platform,
-					channel_mixer_cfg_control,
-					ARRAY_SIZE
-					(channel_mixer_cfg_control));
-	if (ret < 0) {
-		pr_err("%s: failed add platform ctl, err = %d\n",
-			 __func__, ret);
-		ret = -EINVAL;
-		goto done;
+		ret = snd_soc_add_platform_controls(rtd->platform,
+						&channel_mixer_cfg_control[1],
+						1);
+		if (ret < 0) {
+			pr_err("%s: failed add platform ctl, err = %d\n",
+				 __func__, ret);
+			ret = -EINVAL;
+			goto done;
+		}
 	}
 
 done:
@@ -2783,6 +2804,15 @@ static int msm_pcm_add_channel_mixer_weight_controls(
 		channel_mixer_weight_control[0].private_value =
 				(rtd->dai_link->be_id) | (session_type << 8)
 				| (channel << 16);
+		ret = snd_soc_add_platform_controls(rtd->platform,
+					&channel_mixer_weight_control[0],
+					1);
+		if (ret < 0) {
+			pr_err("%s: failed add platform ctl, err = %d\n",
+				 __func__, ret);
+			ret = -EINVAL;
+			goto done;
+		}
 	}
 
 	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream != NULL) {
@@ -2803,17 +2833,15 @@ static int msm_pcm_add_channel_mixer_weight_controls(
 		channel_mixer_weight_control[1].private_value =
 				(rtd->dai_link->be_id) | (session_type << 8)
 				| (channel << 16);
-	}
-
-	ret = snd_soc_add_platform_controls(rtd->platform,
-					channel_mixer_weight_control,
-					ARRAY_SIZE
-					(channel_mixer_weight_control));
-	if (ret < 0) {
-		pr_err("%s: failed add platform ctl, err = %d\n",
-			 __func__, ret);
-		ret = -EINVAL;
-		goto done;
+		ret = snd_soc_add_platform_controls(rtd->platform,
+					&channel_mixer_weight_control[1],
+					1);
+		if (ret < 0) {
+			pr_err("%s: failed add platform ctl, err = %d\n",
+				 __func__, ret);
+			ret = -EINVAL;
+			goto done;
+		}
 	}
 
 done:
