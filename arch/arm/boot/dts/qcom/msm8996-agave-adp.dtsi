@@ -919,6 +919,7 @@
 		vdd-ntn-pci-supply = <&pm8994_s4>;
 		vdd-ntn-io-supply = <&pm8994_s4>;
 
+		qcom,ntn-irq-affinity-to-cpu = <2>;
 		qcom,ntn-rst-delay-msec = <100>;
 		qcom,ntn-rc-num = <1>;
 		qcom,ntn-bus-num = <1>;
