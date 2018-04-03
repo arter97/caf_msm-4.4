@@ -206,5 +206,7 @@
 	qcom,bcl {
 		status = "disabled";
 	};
+
+	/include/ "dm-verity-boot.dtsi"
 };
 

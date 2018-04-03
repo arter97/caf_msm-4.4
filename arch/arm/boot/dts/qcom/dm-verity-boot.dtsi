@@ -1,0 +1,27 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+dm_verity {
+	dmname="disabled";
+	version="1";
+	data_device="/dev/mmcblk0p18";
+	hash_device="/dev/mmcblkop18";
+	data_block_size="4096";
+	hash_block_size="4096";
+	number_of_data_blocks="262144";
+	hash_start_block="262145";
+	algorithm="sha256";
+	// root hash: 64 bytes long
+	digest="ffa13227f1c5d20b22709cd16590050f1af8dd06b8b6ca5fba281f6e315ead72";
+	salt="324c85923c69d4f52154318915a8d81c194717a17406f4a482e060ac64658bd8";
+	// restart_on_corruption ignore_corruption ignore_zero_blocks
+	opt="restart_on_corruption";
+};
