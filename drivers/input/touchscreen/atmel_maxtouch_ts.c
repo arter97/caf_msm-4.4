@@ -1462,7 +1462,7 @@ static int mxt_t6_command(struct mxt_data *data, u16 cmd_offset,
 			  u8 value, bool wait)
 {
 	u16 reg;
-	u8 command_register;
+	u8 command_register = 0;
 	int timeout_counter = 0;
 	int ret;
 
@@ -1567,7 +1567,7 @@ static int mxt_check_retrigen(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
 	int error;
-	int val;
+	int val = 0;
 
 	if (data->pdata->irqflags & IRQF_TRIGGER_LOW)
 		return 0;
@@ -1612,8 +1612,11 @@ static int mxt_update_t100_resolution(struct mxt_data *data)
 	struct i2c_client *client = data->client;
 	int error;
 	struct mxt_object *object;
-	u16 range_x, range_y, temp;
-	u8 cfg, tchaux;
+	u16 range_x = 0;
+	u16 range_y = 0;
+	u16 temp;
+	u8 cfg = 0;
+	u8 tchaux = 0;
 	u8 aux;
 	bool update = false;
 
@@ -1648,10 +1651,6 @@ static int mxt_update_t100_resolution(struct mxt_data *data)
 				1, &tchaux);
 	if (error)
 		return error;
-
-	/* Handle default values */
-	if (range_x == 0)
-		range_x = 1023;
 
 	/* Handle default values */
 	if (range_x == 0)
@@ -1728,8 +1727,8 @@ static int mxt_update_t9_resolution(struct mxt_data *data)
 {
 	struct i2c_client *client = data->client;
 	int error;
-	struct t9_range range;
-	unsigned char orient;
+	struct t9_range range = {0};
+	unsigned char orient = 0;
 	struct mxt_object *object;
 	u16 temp;
 	bool update = false;
