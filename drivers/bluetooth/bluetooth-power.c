@@ -52,203 +52,43 @@ static int bt_major;
 
 static int bt_vreg_init(struct bt_power_vreg_data *vreg)
 {
-	int rc = 0;
-	struct device *dev = &btpdev->dev;
-
-	BT_PWR_DBG("vreg_get for : %s", vreg->name);
-
-	/* Get the regulator handle */
-	vreg->reg = regulator_get(dev, vreg->name);
-	if (IS_ERR(vreg->reg)) {
-		rc = PTR_ERR(vreg->reg);
-		pr_err("%s: regulator_get(%s) failed. rc=%d\n",
-			__func__, vreg->name, rc);
-		goto out;
-	}
-
-	if ((regulator_count_voltages(vreg->reg) > 0)
-			&& (vreg->low_vol_level) && (vreg->high_vol_level))
-		vreg->set_voltage_sup = 1;
-
-out:
-	return rc;
+	return 0;
 }
 
 static int bt_vreg_enable(struct bt_power_vreg_data *vreg)
 {
-	int rc = 0;
-
-	BT_PWR_DBG("vreg_en for : %s", vreg->name);
-
-	if (!vreg->is_enabled) {
-		if (vreg->set_voltage_sup) {
-			rc = regulator_set_voltage(vreg->reg,
-						vreg->low_vol_level,
-						vreg->high_vol_level);
-			if (rc < 0) {
-				BT_PWR_ERR("vreg_set_vol(%s) failed rc=%d\n",
-						vreg->name, rc);
-				goto out;
-			}
-		}
-
-		if (vreg->load_uA >= 0) {
-			rc = regulator_set_load(vreg->reg,
-					vreg->load_uA);
-			if (rc < 0) {
-				BT_PWR_ERR("vreg_set_mode(%s) failed rc=%d\n",
-						vreg->name, rc);
-				goto out;
-			}
-		}
-
-		rc = regulator_enable(vreg->reg);
-		if (rc < 0) {
-			BT_PWR_ERR("regulator_enable(%s) failed. rc=%d\n",
-					vreg->name, rc);
-			goto out;
-		}
-		vreg->is_enabled = true;
-	}
-out:
-	return rc;
+       return 0;
 }
 
 static int bt_vreg_disable(struct bt_power_vreg_data *vreg)
 {
-	int rc = 0;
-
-	if (!vreg)
-		return rc;
-
-	BT_PWR_DBG("vreg_disable for : %s", vreg->name);
-
-	if (vreg->is_enabled) {
-		rc = regulator_disable(vreg->reg);
-		if (rc < 0) {
-			BT_PWR_ERR("regulator_disable(%s) failed. rc=%d\n",
-					vreg->name, rc);
-			goto out;
-		}
-		vreg->is_enabled = false;
-
-		if (vreg->set_voltage_sup) {
-			/* Set the min voltage to 0 */
-			rc = regulator_set_voltage(vreg->reg, 0,
-					vreg->high_vol_level);
-			if (rc < 0) {
-				BT_PWR_ERR("vreg_set_vol(%s) failed rc=%d\n",
-						vreg->name, rc);
-				goto out;
-			}
-		}
-		if (vreg->load_uA >= 0) {
-			rc = regulator_set_load(vreg->reg, 0);
-			if (rc < 0) {
-				BT_PWR_ERR("vreg_set_mode(%s) failed rc=%d\n",
-						vreg->name, rc);
-			}
-		}
-	}
-out:
-	return rc;
+      return 0;
 }
 
 static int bt_configure_vreg(struct bt_power_vreg_data *vreg)
 {
-	int rc = 0;
-
-	BT_PWR_DBG("config %s", vreg->name);
-
-	/* Get the regulator handle for vreg */
-	if (!(vreg->reg)) {
-		rc = bt_vreg_init(vreg);
-		if (rc < 0)
-			return rc;
-	}
-	rc = bt_vreg_enable(vreg);
-
-	return rc;
+      return 0;
 }
 
 static int bt_clk_enable(struct bt_power_clk_data *clk)
 {
-	int rc = 0;
-
-	BT_PWR_DBG("%s", clk->name);
-
-	/* Get the clock handle for vreg */
-	if (!clk->clk || clk->is_enabled) {
-		BT_PWR_ERR("error - node: %p, clk->is_enabled:%d",
-			clk->clk, clk->is_enabled);
-		return -EINVAL;
-	}
-
-	rc = clk_prepare_enable(clk->clk);
-	if (rc) {
-		BT_PWR_ERR("failed to enable %s, rc(%d)\n", clk->name, rc);
-		return rc;
-	}
-
-	clk->is_enabled = true;
-	return rc;
-}
+      return 0;
+} 
 
 static int bt_clk_disable(struct bt_power_clk_data *clk)
 {
-	int rc = 0;
-
-	BT_PWR_DBG("%s", clk->name);
-
-	/* Get the clock handle for vreg */
-	if (!clk->clk || !clk->is_enabled) {
-		BT_PWR_ERR("error - node: %p, clk->is_enabled:%d",
-			clk->clk, clk->is_enabled);
-		return -EINVAL;
-	}
-	clk_disable_unprepare(clk->clk);
-
-	clk->is_enabled = false;
-	return rc;
+     return 0;
 }
 
 static int bt_configure_gpios(int on)
 {
-	int rc = 0;
-	int bt_reset_gpio = bt_power_pdata->bt_gpio_sys_rst;
-
-	BT_PWR_DBG("bt_gpio= %d on: %d", bt_reset_gpio, on);
-
-	if (on) {
-		rc = gpio_request(bt_reset_gpio, "bt_sys_rst_n");
-		if (rc) {
-			BT_PWR_ERR("unable to request gpio %d (%d)\n",
-					bt_reset_gpio, rc);
-			return rc;
-		}
-
-		rc = gpio_direction_output(bt_reset_gpio, 0);
-		if (rc) {
-			BT_PWR_ERR("Unable to set direction\n");
-			return rc;
-		}
-		msleep(50);
-		rc = gpio_direction_output(bt_reset_gpio, 1);
-		if (rc) {
-			BT_PWR_ERR("Unable to set direction\n");
-			return rc;
-		}
-		msleep(50);
-	} else {
-		gpio_set_value(bt_reset_gpio, 0);
-		msleep(100);
-	}
-	return rc;
+    return 0;
 }
 
 static int bluetooth_power(int on)
 {
 	int rc = 0;
+        printk(KERN_ERR "Prakash entering to the Fun:bluetooth_power\n");
 
 	BT_PWR_DBG("on: %d", on);
 
@@ -393,7 +233,7 @@ static int bluetooth_power_rfkill_probe(struct platform_device *pdev)
 {
 	struct rfkill *rfkill;
 	int ret;
-
+         printk(KERN_ERR "Prakash Entering to the Fun:bluetooth_power_rfkill_probe\n");
 	rfkill = rfkill_alloc("bt_power", &pdev->dev, RFKILL_TYPE_BLUETOOTH,
 			      &bluetooth_power_rfkill_ops,
 			      pdev->dev.platform_data);
@@ -608,6 +448,7 @@ static int bt_power_populate_dt_pinfo(struct platform_device *pdev)
 static int bt_power_probe(struct platform_device *pdev)
 {
 	int ret = 0;
+        printk(KERN_ERR "Prakash Entering to the Fun:bt_power_probe\n");
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
@@ -732,7 +573,7 @@ static const struct file_operations bt_dev_fops = {
 static int __init bluetooth_power_init(void)
 {
 	int ret;
-
+        printk(KERN_ERR "Prakash Entering  to the Fun:bluetooth_power_init\n");
 	ret = platform_driver_register(&bt_power_driver);
 
 	bt_major = register_chrdev(0, "bt", &bt_dev_fops);
