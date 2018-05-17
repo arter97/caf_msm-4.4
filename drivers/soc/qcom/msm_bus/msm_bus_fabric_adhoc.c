@@ -123,8 +123,10 @@ static int bus_get_reg(struct nodeclk *nclk, struct device *dev)
 		if (IS_ERR_OR_NULL(nclk->reg)) {
 			ret =
 			(IS_ERR(nclk->reg) ? PTR_ERR(nclk->reg) : -ENXIO);
-			dev_err(dev, "Error: Failed to get regulator %s:%d\n",
-							nclk->reg_name, ret);
+			if (ret != -EPROBE_DEFER) {
+				dev_err(dev, "Error: Failed to get regulator %s:%d\n",
+						nclk->reg_name, ret);
+			}
 		} else {
 			dev_dbg(dev, "Succesfully got regulator for %d\n",
 				node_dev->node_info->id);

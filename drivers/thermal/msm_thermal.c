@@ -6176,8 +6176,13 @@ static int probe_vdd_rstr(struct device_node *node,
 	if (rails_cnt) {
 		ret = vdd_restriction_reg_init(pdev);
 		if (ret) {
-			pr_err("Err regulator init. err:%d. KTM continues.\n",
-					ret);
+			if (ret != -EPROBE_DEFER) {
+				pr_err("Err regulator init. err:%d. KTM continues.\n",
+					   ret);
+			} else {
+				pr_debug("Err regulator init. err:%d. KTM continues.\n",
+					   ret);
+			}
 			goto read_node_fail;
 		}
 		ret = sensor_mgr_init_threshold(&thresh[MSM_VDD_RESTRICTION],
@@ -6198,7 +6203,7 @@ static int probe_vdd_rstr(struct device_node *node,
 read_node_fail:
 	vdd_rstr_probed = true;
 	if (ret) {
-		dev_info(&pdev->dev,
+		dev_dbg(&pdev->dev,
 		"%s:Failed reading node=%s, key=%s. err=%d. KTM continues\n",
 			__func__, node->full_name, key, ret);
 		kfree(rails);
