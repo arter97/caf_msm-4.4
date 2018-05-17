@@ -1025,9 +1025,13 @@ static int pil_tz_driver_probe(struct platform_device *pdev)
 						"qcom,keep-proxy-regs-on");
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "base_reg");
-	d->reg_base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(d->reg_base)) {
-		dev_err(&pdev->dev, "Failed to iomap base register\n");
+	if (res) {
+		d->reg_base = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(d->reg_base)) {
+			dev_err(&pdev->dev, "Failed to iomap base register\n");
+			d->reg_base = NULL;
+		}
+	} else {
 		d->reg_base = NULL;
 	}
 
