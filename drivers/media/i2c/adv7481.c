@@ -2516,7 +2516,11 @@ static int adv7481_probe(struct platform_device *pdev)
 
 	ret = adv7481_cci_init(state);
 	if (ret < 0) {
-		pr_err("%s: failed adv7481_cci_init ret %d\n", __func__, ret);
+		if (ret != -EPROBE_DEFER) {
+			pr_err("%s: failed adv7481_cci_init ret %d\n", __func__, ret);
+		} else {
+			pr_debug("%s: failed adv7481_cci_init ret %d\n", __func__, ret);
+		}
 		goto err_mem_free;
 	}
 
