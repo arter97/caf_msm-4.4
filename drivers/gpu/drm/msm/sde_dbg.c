@@ -1641,7 +1641,6 @@ void sde_dbg_init_dbg_buses(u32 hwversion)
 				ARRAY_SIZE(vbif_dbg_bus_msm8998);
 		break;
 	default:
-		pr_err("unsupported chipset id %u\n", hwversion);
 		break;
 	}
 

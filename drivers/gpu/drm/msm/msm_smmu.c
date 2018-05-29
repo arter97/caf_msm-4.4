@@ -291,6 +291,7 @@ static struct device *msm_smmu_device_create(struct device *dev,
 		DRM_ERROR("unable to find matching domain for %d\n", domain);
 		return ERR_PTR(-ENOENT);
 	}
+
 	DRM_INFO("found domain %d compat: %s\n", domain, compat);
 
 	if (domain == MSM_SMMU_DOMAIN_UNSECURE) {
@@ -315,10 +316,8 @@ static struct device *msm_smmu_device_create(struct device *dev,
 	}
 
 	child = of_find_compatible_node(dev->of_node, NULL, compat);
-	if (!child) {
-		DRM_ERROR("unable to find compatible node for %s\n", compat);
+	if (!child)
 		return ERR_PTR(-ENODEV);
-	}
 
 	pdev = of_platform_device_create(child, NULL, dev);
 	if (!pdev) {

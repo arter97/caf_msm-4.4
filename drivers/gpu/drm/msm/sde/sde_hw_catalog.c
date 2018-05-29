@@ -2380,10 +2380,6 @@ struct sde_mdss_cfg *sde_hw_catalog_init(struct drm_device *dev,
 	if (rc)
 		goto end;
 
-	rc = _sde_vp_parse_dt(np, sde_cfg);
-	if (rc)
-		SDE_DEBUG("virtual plane is not supported.\n");
-
 	rc = sde_hardware_caps(sde_cfg, hw_rev);
 	if (rc)
 		goto end;

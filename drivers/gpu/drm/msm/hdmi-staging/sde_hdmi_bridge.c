@@ -393,7 +393,7 @@ static int _sde_hdmi_bridge_setup_scrambler(struct hdmi *hdmi,
 		scrambler_on = connector->supports_scramble;
 	}
 
-	DRM_INFO("scrambler %s\n", scrambler_on ? "on" : "off");
+	//DRM_INFO("scrambler %s\n", scrambler_on ? "on" : "off");
 
 	if (scrambler_on) {
 		rc = sde_hdmi_scdc_write(hdmi,
@@ -834,8 +834,6 @@ static u32 _sde_hdmi_choose_best_format(struct hdmi *hdmi,
 		return MSM_MODE_FLAG_COLOR_FORMAT_RGB444;
 	else if (mode->flags & DRM_MODE_FLAG_SUPPORTS_YUV)
 		return MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420;
-
-	SDE_ERROR("Can't get available best display format\n");
 
 	return MSM_MODE_FLAG_COLOR_FORMAT_RGB444;
 }

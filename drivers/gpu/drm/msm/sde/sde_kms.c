@@ -1134,8 +1134,10 @@ static int _sde_kms_mmu_init(struct sde_kms *sde_kms)
 		if (IS_ERR(mmu)) {
 			/* MMU's can be optional depending on platform */
 			ret = PTR_ERR(mmu);
-			DRM_INFO("failed to init iommu id %d: rc: %d\n", i,
-					ret);
+
+			if (ret != -ENODEV)
+				DRM_INFO("failed to init iommu id%d: rc:%d\n",
+						i, ret);
 			continue;
 		}
 
