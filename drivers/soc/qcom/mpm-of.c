@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -39,12 +39,6 @@
 #include <linux/irqchip/msm-mpm-irq.h>
 #include <linux/mutex.h>
 #include <asm/arch_timer.h>
-
-enum {
-	MSM_MPM_GIC_IRQ_DOMAIN,
-	MSM_MPM_GPIO_IRQ_DOMAIN,
-	MSM_MPM_NR_IRQ_DOMAINS,
-};
 
 enum {
 	MSM_MPM_SET_ENABLED,
@@ -1003,21 +997,20 @@ int __init msm_mpm_device_init(void)
 }
 arch_initcall(msm_mpm_device_init);
 
-void of_mpm_init(void)
+void of_mpm_init(enum msm_mpm_irq_domain domain)
 {
 	struct device_node *node;
-	int i;
 	int ret;
 
 	node = of_find_matching_node(NULL, msm_mpm_match_table);
 	WARN_ON(!node);
 	if (node) {
 		__of_mpm_init(node);
-		for (i = 0; i < MSM_MPM_NR_IRQ_DOMAINS; i++) {
-			ret = mpm_init_irq_domain(node, i);
+		if (domain < MSM_MPM_NR_IRQ_DOMAINS) {
+			ret = mpm_init_irq_domain(node, domain);
 			if (ret)
-				pr_err("MPM %d irq mapping errored %d\n", i,
-						ret);
+				pr_err("MPM %d irq mapping errored %d\n", 
+						domain, ret);
 		}
 	}
 }
