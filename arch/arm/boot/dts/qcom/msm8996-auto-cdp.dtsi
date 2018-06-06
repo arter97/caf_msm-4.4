@@ -1313,6 +1313,10 @@
 	/delete-property/ qcom,spkr-sd-n-gpio;
 };
 
+&mdss_rotator {
+	status = "disabled";
+};
+
 &vfe_smmu {
 	qcom,no-smr-check;
 };
