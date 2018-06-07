@@ -2021,8 +2021,29 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 		read_irq_status_and_clear(vfe_dev, &irq_status0, &irq_status1);
 
 	if ((irq_status0 == 0) && (irq_status1 == 0)) {
-		pr_err("%s:VFE%d irq_status0 & 1 are both 0\n",
+		static uint32_t s_cnt = 0;
+		static struct msm_isp_timestamp last_ts;
+		struct msm_isp_timestamp ts;
+		pr_err_ratelimited("%s:VFE%d irq_status0 & 1 are both 0\n",
 			__func__, vfe_dev->pdev->id);
+
+		msm_isp_get_timestamp(&ts, vfe_dev);
+		if( vfe_dev->pdev->id == 1 &&
+			(ts.buf_time.tv_sec == last_ts.buf_time.tv_sec) &&
+			(ts.buf_time.tv_usec - last_ts.buf_time.tv_usec) < 10000)
+		{
+			++s_cnt;
+		}
+
+		if( vfe_dev->pdev->id == 1 )
+			last_ts = ts;
+
+		if( s_cnt > 60 )
+		{
+			pr_err("%s:VFE1 always irq_status0 & 1 are both 0\n", __func__);
+			s_cnt = 0;
+		}
+
 		return IRQ_HANDLED;
 	}
 
