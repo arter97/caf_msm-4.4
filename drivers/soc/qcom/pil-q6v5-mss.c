@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -190,6 +190,13 @@ static int modem_ramdump(int enable, const struct subsys_desc *subsys)
 	return ret;
 }
 
+static void modem_free_memory(const struct subsys_desc *subsys)
+{
+	struct modem_data *drv = subsys_to_drv(subsys);
+
+	pil_modem_free_memory(&drv->q6->desc);
+}
+
 static irqreturn_t modem_wdog_bite_intr_handler(int irq, void *dev_id)
 {
 	struct modem_data *drv = subsys_to_drv(dev_id);
@@ -217,12 +224,12 @@ static int pil_subsys_init(struct modem_data *drv,
 	drv->subsys_desc.shutdown = modem_shutdown;
 	drv->subsys_desc.powerup = modem_powerup;
 	drv->subsys_desc.ramdump = modem_ramdump;
+	drv->subsys_desc.free_memory = modem_free_memory;
 	drv->subsys_desc.crash_shutdown = modem_crash_shutdown;
 	drv->subsys_desc.err_fatal_handler = modem_err_fatal_intr_handler;
 	drv->subsys_desc.stop_ack_handler = modem_stop_ack_intr_handler;
 	drv->subsys_desc.wdog_bite_handler = modem_wdog_bite_intr_handler;
 
-	drv->q6->desc.modem_ssr = false;
 	drv->subsys = subsys_register(&drv->subsys_desc);
 	if (IS_ERR(drv->subsys)) {
 		ret = PTR_ERR(drv->subsys);
