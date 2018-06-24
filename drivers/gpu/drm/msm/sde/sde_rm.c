@@ -782,9 +782,11 @@ static int _sde_rm_reserve_ctls(
 		/* early return when finding the matched ctl id */
 		if ((prefer_ctl_id > 0) && (iter.blk->id == prefer_ctl_id)) {
 			ctls[i] = iter.blk;
-
+			prefer_ctl_id = 0;
 			if (++i == reqs->num_ctl)
 				break;
+			else
+				continue;
 		}
 
 		if (reqs->needs_split_display != has_split_display)
