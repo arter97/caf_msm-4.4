@@ -90,6 +90,7 @@ struct hci_uart {
 
 	unsigned int init_speed;
 	unsigned int oper_speed;
+        spinlock_t             rx_lock;
 };
 
 /* HCI_UART proto flag bits */
