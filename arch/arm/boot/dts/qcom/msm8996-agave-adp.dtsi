@@ -1540,6 +1540,10 @@
 	};
 };
 
+&mdss_rotator {
+	status = "disabled";
+};
+
 &vfe_smmu {
 	qcom,no-smr-check;
 };
