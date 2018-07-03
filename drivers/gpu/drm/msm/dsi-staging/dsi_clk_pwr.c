@@ -468,10 +468,8 @@ int dsi_clk_pwr_of_get_vreg_data(struct device_node *of_node,
 	supply_root_node = of_get_child_by_name(of_node, supply_name);
 	if (!supply_root_node) {
 		supply_root_node = of_parse_phandle(of_node, supply_name, 0);
-		if (!supply_root_node) {
-			pr_err("No supply entry present for %s\n", supply_name);
+		if (!supply_root_node)
 			return -EINVAL;
-		}
 	}
 
 	regs->count = of_get_available_child_count(supply_root_node);

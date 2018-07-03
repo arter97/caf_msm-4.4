@@ -1066,7 +1066,6 @@ static int dsi_display_clocks_init(struct dsi_display *display)
 	mux->byte_clk = devm_clk_get(&display->pdev->dev, "mux_byte_clk");
 	if (IS_ERR_OR_NULL(mux->byte_clk)) {
 		rc = PTR_ERR(mux->byte_clk);
-		pr_err("failed to get mux_byte_clk, rc=%d\n", rc);
 		mux->byte_clk = NULL;
 		/*
 		 * Skip getting rest of clocks since one failed. This is a
