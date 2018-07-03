@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1579,10 +1579,13 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		goto error;
 	}
 
-	rc = dsi_panel_parse_cmd_sets(panel, of_node);
-	if (rc) {
-		pr_err("failed to parse command sets, rc=%d\n", rc);
-		goto error;
+	/* only available in dsi cmd mode */
+	if (panel->mode.panel_mode == DSI_OP_CMD_MODE) {
+		rc = dsi_panel_parse_cmd_sets(panel, of_node);
+		if (rc) {
+			pr_err("failed to parse command sets, rc=%d\n", rc);
+			goto error;
+		}
 	}
 
 	rc = dsi_panel_parse_power_cfg(parent, panel, of_node);
