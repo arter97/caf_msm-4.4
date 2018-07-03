@@ -348,7 +348,7 @@ static int submit_reloc(struct msm_gpu *gpu,
 	 */
 	ptr = msm_gem_vaddr(&obj->base);
 
-	if (IS_ERR(ptr)) {
+	if (IS_ERR_OR_NULL(ptr)) {
 		ret = PTR_ERR(ptr);
 		DBG("failed to map: %d", ret);
 		return ret;
