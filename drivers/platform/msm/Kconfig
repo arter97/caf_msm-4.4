@@ -68,6 +68,18 @@ config EP_PCIE_HW
 		2. Address mapping.
 		3. Sideband signaling.
 		4. Power management.
+
+config EP_PCIE_HW_8996
+	bool "PCIe Endpoint HW driver on 8996"
+	depends on EP_PCIE
+	help
+	  PCIe endpoint HW specific implementation on 8996.
+	  It supports:
+		1. link training with Root Complex.
+		2. Address mapping.
+		3. Sideband signaling.
+		4. Power management.
+
 config IPA
 	tristate "IPA support"
 	depends on SPS && NET
