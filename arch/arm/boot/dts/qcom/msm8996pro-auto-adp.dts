@@ -87,3 +87,7 @@
 	qcom,smmu-support;
 	status = "ok";
 };
+
+&pcie_ep {
+	status = "disabled";
+};
