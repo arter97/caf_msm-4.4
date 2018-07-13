@@ -534,7 +534,7 @@ void msm_mpm_enter_sleep(uint64_t sclk_count, bool from_idle,
 		pr_err("%s(): MPM not initialized\n", __func__);
 		return;
 	}
-
+	sclk_count = 0; /*workaround for resolving frequent wake ups from alarms*/
 	if (sclk_count) {
 		do_div(wakeup, SCLK_HZ);
 		wakeup += arch_counter_get_cntvct();
