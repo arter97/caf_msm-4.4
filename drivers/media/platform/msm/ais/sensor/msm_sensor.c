@@ -1627,25 +1627,8 @@ static int msm_sensor_power(struct v4l2_subdev *sd, int on)
 	return rc;
 }
 
-
-static u32 msm_sensor_evt_mask_to_sensor_event(u32 evt_mask)
-{
-	u32 evt_id = SENSOR_EVENT_SUBS_MASK_NONE;
-
-	switch (evt_mask) {
-	case SENSOR_EVENT_MASK_INDEX_SIGNAL_STATUS:
-		evt_id = SENSOR_EVENT_SIGNAL_STATUS;
-		break;
-	default:
-		evt_id = SENSOR_EVENT_SUBS_MASK_NONE;
-		break;
-	}
-
-	return evt_id;
-}
-
 static int msm_sensor_subscribe_event_mask(struct v4l2_fh *fh,
-		struct v4l2_event_subscription *sub, int evt_mask_index,
+		struct v4l2_event_subscription *sub,
 		u32 evt_id, bool subscribe_flag)
 {
 	int rc = 0;
@@ -1668,28 +1651,28 @@ static int msm_sensor_subscribe_event_mask(struct v4l2_fh *fh,
 static int msm_sensor_process_event_subscription(struct v4l2_fh *fh,
 	struct v4l2_event_subscription *sub, bool subscribe_flag)
 {
-	int rc = 0, evt_mask_index = 0;
-	u32 evt_mask = sub->type;
-	u32 evt_id = 0;
+	int rc = 0;
+	enum msm_sensor_event_t evt_type;
+	u32 sub_evt = sub->type;
 
-	if (SENSOR_EVENT_SUBS_MASK_NONE == evt_mask) {
+	if (SENSOR_EVENT_NONE == sub_evt) {
 		pr_err("%s: Subs event_type is None=0x%x\n",
-			__func__, evt_mask);
+			__func__, sub_evt);
 		return 0;
 	}
 
-	evt_mask_index = SENSOR_EVENT_MASK_INDEX_SIGNAL_STATUS;
-	if (evt_mask & (1<<evt_mask_index)) {
-		evt_id =
-			msm_sensor_evt_mask_to_sensor_event(
-				evt_mask_index);
-		rc = msm_sensor_subscribe_event_mask(fh, sub,
-			evt_mask_index, evt_id, subscribe_flag);
-		if (rc != 0) {
-			pr_err("%s: Subs event index:%d failed\n",
-				__func__, evt_mask_index);
-			return rc;
-		}
+	for (evt_type = SENSOR_EVENT_SIGNAL_STATUS;
+			evt_type < SENSOR_EVENT_MAX;
+			evt_type++) {
+	    if (sub_evt & evt_type) {
+		    rc = msm_sensor_subscribe_event_mask(fh, sub,
+			    evt_type, subscribe_flag);
+		    if (rc != 0) {
+			    pr_err("%s: Subs event index:%d failed\n",
+				    __func__, evt_type);
+			    return rc;
+		    }
+	    }
 	}
 
 	return rc;

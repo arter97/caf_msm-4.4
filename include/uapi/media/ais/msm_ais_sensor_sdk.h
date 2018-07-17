@@ -48,6 +48,8 @@
 #define MSM_EEPROM_MEMORY_MAP_MAX_SIZE  80
 #define MSM_EEPROM_MAX_MEM_MAP_CNT      8
 
+#define MAX_INTERRUPT_GPIO_PER_INPUT 3
+
 enum msm_sensor_camera_id_t {
 	CAMERA_0,
 	CAMERA_1,
@@ -288,6 +290,7 @@ struct msm_sensor_id_info_t {
 struct msm_camera_sensor_gpio_intr_config {
 	int gpio_num;
 	uint32_t gpio_trigger;
+	uint32_t event;
 };
 
 struct msm_camera_sensor_slave_info {
@@ -306,7 +309,7 @@ struct msm_camera_sensor_slave_info {
 	struct msm_sensor_init_params sensor_init_params;
 	enum msm_sensor_output_format_t output_format;
 	struct msm_camera_sensor_gpio_intr_config
-				gpio_intr_config;
+				gpio_intr_config[MAX_INTERRUPT_GPIO_PER_INPUT];
 	unsigned int camera_sensor_device_id;
 };
 

@@ -637,11 +637,12 @@ static void msm_sensor_fill_sensor_info(struct msm_sensor_ctrl_t *s_ctrl,
 
 static irqreturn_t bridge_irq(int irq, void *dev)
 {
-	struct msm_sensor_ctrl_t *s_ctrl = dev;
+	struct msm_sensor_intr_t *s_intr = dev;
+	struct msm_sensor_ctrl_t *s_ctrl = s_intr->sctrl;
 
 	pr_debug("msm_sensor_driver: received bridge interrupt:0x%x\n",
 		s_ctrl->sensordata->slave_info->sensor_slave_addr);
-	schedule_delayed_work(&s_ctrl->irq_delayed_work,
+	schedule_delayed_work(&s_intr->irq_work,
 						msecs_to_jiffies(0));
 	return IRQ_HANDLED;
 }
@@ -649,19 +650,21 @@ static irqreturn_t bridge_irq(int irq, void *dev)
 static void bridge_irq_delay_work(struct work_struct *work)
 {
 	struct msm_sensor_ctrl_t *s_ctrl;
+	struct msm_sensor_intr_t *s_intr;
 	struct msm_camera_i2c_client *sensor_i2c_client;
 	struct msm_camera_slave_info *slave_info;
 	const char *sensor_name;
 
 	struct msm_sensor_event_data sensor_event;
 
-	s_ctrl = container_of(work, struct msm_sensor_ctrl_t,
-				irq_delayed_work.work);
-	if (!s_ctrl) {
+	s_intr = container_of(work, struct msm_sensor_intr_t,
+				irq_work.work);
+	if (!s_intr) {
 		pr_err("%s:%d failed: %pK\n",
-			__func__, __LINE__, s_ctrl);
+			__func__, __LINE__, s_intr);
 		goto exit_queue;
 	}
+	s_ctrl = s_intr->sctrl;
 	sensor_i2c_client = s_ctrl->sensor_i2c_client;
 	slave_info = s_ctrl->sensordata->slave_info;
 	sensor_name = s_ctrl->sensordata->sensor_name;
@@ -678,8 +681,18 @@ static void bridge_irq_delay_work(struct work_struct *work)
 	sensor_event.sensor_slave_addr =
 		slave_info->sensor_slave_addr;
 	/* Queue the event */
-	msm_sensor_send_event(s_ctrl, SENSOR_EVENT_SIGNAL_STATUS,
-		&sensor_event);
+	if (s_intr->event == SENSOR_EVENT_CUSTOM1)
+	{
+		msm_sensor_send_event(s_ctrl, SENSOR_EVENT_CUSTOM1,
+			&sensor_event);
+		pr_err("SENSOR_EVENT_CUSTOM1\n");
+	}
+	else
+	{
+		msm_sensor_send_event(s_ctrl, SENSOR_EVENT_SIGNAL_STATUS,
+			&sensor_event);
+		pr_err("SENSOR_EVENT_SIGNAL_STATUS\n");
+	}
 	mutex_unlock(s_ctrl->msm_sensor_mutex);
 exit_queue:
 	pr_debug("Work IRQ exit\n");
@@ -689,7 +702,7 @@ exit_queue:
 int32_t msm_sensor_driver_probe(void *setting,
 	struct msm_sensor_info_t *probed_info, char *entity_name)
 {
-	int32_t                              rc = 0;
+	int32_t                              rc = 0, i = 0;
 	struct msm_sensor_ctrl_t            *s_ctrl = NULL;
 	struct msm_camera_cci_client        *cci_client = NULL;
 	struct msm_camera_sensor_slave_info *slave_info = NULL;
@@ -985,24 +998,29 @@ CSID_TG:
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
 
-	if (slave_info->gpio_intr_config.gpio_num != -1) {
+	while ((slave_info->gpio_intr_config[i].gpio_num != -1) &&
+			(i < MAX_INTERRUPT_GPIO_PER_INPUT)){
 		/* Configure INTB interrupt */
-		s_ctrl->gpio_array[0].gpio =
-			slave_info->gpio_intr_config.gpio_num;
-		s_ctrl->gpio_array[0].flags = 0;
-		/* Only setup IRQ1 for now... */
-		INIT_DELAYED_WORK(&s_ctrl->irq_delayed_work,
+		s_ctrl->s_intr[i].gpio_array[0].gpio =
+			slave_info->gpio_intr_config[i].gpio_num;
+		s_ctrl->s_intr[i].gpio_array[0].flags = 0;
+		s_ctrl->s_intr[i].event =
+			slave_info->gpio_intr_config[i].event;
+		s_ctrl->s_intr[i].sctrl = s_ctrl;
+
+		INIT_DELAYED_WORK(&s_ctrl->s_intr[i].irq_work,
 			bridge_irq_delay_work);
-		rc = gpio_request_array(&s_ctrl->gpio_array[0], 1);
+
+		rc = gpio_request_array(&s_ctrl->s_intr[i].gpio_array[0], 1);
 		if (rc < 0) {
 			pr_err("%s: Failed to request irq_gpio %d",
 				__func__, rc);
 			goto cancel_work;
 		}
 
-		if (gpio_is_valid(s_ctrl->gpio_array[0].gpio)) {
+		if (gpio_is_valid(s_ctrl->s_intr[i].gpio_array[0].gpio)) {
 			rc |= gpio_direction_input(
-				s_ctrl->gpio_array[0].gpio);
+				s_ctrl->s_intr[i].gpio_array[0].gpio);
 			if (rc) {
 				pr_err("%s: Failed gpio_direction irq %d",
 						__func__, rc);
@@ -1010,13 +1028,14 @@ CSID_TG:
 			}
 		}
 
-		s_ctrl->irq = gpio_to_irq(s_ctrl->gpio_array[0].gpio);
-		if (s_ctrl->irq) {
-			rc = request_irq(s_ctrl->irq, bridge_irq,
+		s_ctrl->s_intr[i].irq =
+			gpio_to_irq(s_ctrl->s_intr[i].gpio_array[0].gpio);
+		if (s_ctrl->s_intr[i].irq) {
+			rc = request_irq(s_ctrl->s_intr[i].irq, bridge_irq,
 					IRQF_ONESHOT |
 					(slave_info->
-					 gpio_intr_config.gpio_trigger),
-					"qcom,camera", s_ctrl);
+					 gpio_intr_config[i].gpio_trigger),
+					"qcom,camera", &s_ctrl->s_intr[i]);
 			if (rc) {
 				pr_err("%s: Failed request_irq %d",
 						__func__, rc);
@@ -1031,7 +1050,9 @@ CSID_TG:
 		}
 
 		/* Keep irq enabled */
-		pr_debug("msm_sensor_driver.c irq number = %d\n", s_ctrl->irq);
+		pr_debug("msm_sensor_driver.c irq number = %d\n", s_ctrl->s_intr[i].irq);
+
+		i++;
 	}
 
 	/*
@@ -1042,7 +1063,10 @@ CSID_TG:
 	return rc;
 
 cancel_work:
-	cancel_delayed_work(&s_ctrl->irq_delayed_work);
+	while (i >= 0) {
+		cancel_delayed_work(&s_ctrl->s_intr[i].irq_work);
+		i--;
+	}
 free_camera_info:
 	kfree(camera_info);
 free_slave_info:
