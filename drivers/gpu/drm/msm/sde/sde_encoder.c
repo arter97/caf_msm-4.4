@@ -44,6 +44,13 @@
 /* timeout in frames waiting for frame done */
 #define SDE_ENCODER_FRAME_DONE_TIMEOUT	60
 
+/* timeout in msecs */
+#define SDE_ENCODER_UNDERRUN_TIMEOUT	200
+/* underrun threshold value */
+#define SDE_ENCODER_UNDERRUN_CNT_THRESHOLD	10
+/* 3 vsync time period in msec, report underrun  */
+#define SDE_ENCODER_UNDERRUN_DELTA	50
+
 #define MISR_BUFF_SIZE	256
 
 /*
@@ -155,6 +162,11 @@ static struct sde_csc_cfg sde_csc_10bit_convert[SDE_MAX_CSC] = {
  * @crtc_frame_event:		callback event
  * @frame_done_timeout:		frame done timeout in Hz
  * @frame_done_timer:		watchdog timer for frame done event
+ * @last_underrun_ts:		variable to hold the last occurred underrun
+ *				timestamp
+ * @underrun_cnt_timer:		underrun counter for timer
+ * @notify_underrun_timer:	timer for reporting of underrun error
+ * @work:			work struct for deferring reporting of error
  */
 struct sde_encoder_virt {
 	struct drm_encoder base;
@@ -181,6 +193,10 @@ struct sde_encoder_virt {
 	u32 crtc_frame_event;
 	atomic_t frame_done_timeout;
 	struct timer_list frame_done_timer;
+	long last_underrun_ts;
+	atomic_t underrun_cnt_timer;
+	struct timer_list notify_underrun_timer;
+	struct work_struct work;
 };
 
 #define to_sde_encoder_virt(x) container_of(x, struct sde_encoder_virt, base)
@@ -597,14 +613,28 @@ static void sde_encoder_vblank_callback(struct drm_encoder *drm_enc,
 static void sde_encoder_underrun_callback(struct drm_encoder *drm_enc,
 		struct sde_encoder_phys *phy_enc)
 {
+	struct sde_encoder_virt *sde_enc = NULL;
+
 	if (!phy_enc)
 		return;
+
+	sde_enc = to_sde_encoder_virt(drm_enc);
 
 	SDE_ATRACE_BEGIN("encoder_underrun_callback");
 	atomic_inc(&phy_enc->underrun_cnt);
 	SDE_EVT32(DRMID(drm_enc), atomic_read(&phy_enc->underrun_cnt));
 
-	sde_recovery_set_events(SDE_UNDERRUN);
+	/* start timer if it is not running and it is first underrun */
+	if (!timer_pending(&sde_enc->notify_underrun_timer) &&
+				!sde_enc->last_underrun_ts) {
+		mod_timer(&sde_enc->notify_underrun_timer,
+			jiffies +
+			msecs_to_jiffies(SDE_ENCODER_UNDERRUN_TIMEOUT));
+	}
+
+	sde_enc->last_underrun_ts = jiffies;
+	atomic_inc(&sde_enc->underrun_cnt_timer);
+
 	trace_sde_encoder_underrun(DRMID(drm_enc),
 		atomic_read(&phy_enc->underrun_cnt));
 	SDE_DBG_CTRL("stop_ftrace");
@@ -1391,6 +1421,40 @@ static void sde_encoder_frame_done_timeout(unsigned long data)
 			SDE_ENCODER_FRAME_EVENT_ERROR);
 }
 
+static void sde_encoder_report_underrun_work(struct work_struct *work)
+{
+	sde_recovery_set_events(SDE_UNDERRUN);
+}
+
+static void sde_encoder_report_underrun_timeout(unsigned long data)
+{
+	struct drm_encoder *drm_enc = (struct drm_encoder *) data;
+	struct sde_encoder_virt *sde_enc = to_sde_encoder_virt(drm_enc);
+	unsigned long delta, time;
+
+	if (!drm_enc || !drm_enc->dev || !drm_enc->dev->dev_private) {
+		SDE_ERROR("invalid parameters\n");
+		return;
+	}
+
+	delta = jiffies - sde_enc->last_underrun_ts;
+	time = jiffies_to_msecs(delta);
+
+	/*
+	 * report underrun error when it exceeds the threshold count
+	 * and the occurrence of last underrun error is less than 3 vsyncs.
+	 */
+	if (atomic_read(&sde_enc->underrun_cnt_timer) >
+			SDE_ENCODER_UNDERRUN_CNT_THRESHOLD &&
+			time < SDE_ENCODER_UNDERRUN_DELTA &&
+			!work_pending(&sde_enc->work)) {
+		schedule_work(&sde_enc->work);
+	}
+	/* reset underrun last timestamp and counter */
+	sde_enc->last_underrun_ts = 0;
+	atomic_set(&sde_enc->underrun_cnt_timer, 0);
+}
+
 struct drm_encoder *sde_encoder_init(
 		struct drm_device *dev,
 		struct msm_display_info *disp_info)
@@ -1423,6 +1487,10 @@ struct drm_encoder *sde_encoder_init(
 	atomic_set(&sde_enc->frame_done_timeout, 0);
 	setup_timer(&sde_enc->frame_done_timer, sde_encoder_frame_done_timeout,
 			(unsigned long) sde_enc);
+	setup_timer(&sde_enc->notify_underrun_timer,
+			sde_encoder_report_underrun_timeout,
+			(unsigned long) sde_enc);
+	INIT_WORK(&sde_enc->work, sde_encoder_report_underrun_work);
 
 	_sde_encoder_init_debugfs(drm_enc, sde_enc, sde_kms);
 
