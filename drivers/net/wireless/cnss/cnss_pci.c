@@ -296,6 +296,7 @@ module_param(pcie_link_down_panic, uint, S_IRUSR | S_IWUSR);
 MODULE_PARM_DESC(pcie_link_down_panic,
 		"Trigger kernel panic when PCIe link down is detected");
 
+#ifndef CONFIG_GHS_VMM
 static void cnss_put_wlan_enable_gpio(void)
 {
 	struct cnss_wlan_gpio_info *gpio_info = &penv->gpio_info;
@@ -570,6 +571,7 @@ out:
 static void cnss_wlan_gpio_set(struct cnss_wlan_gpio_info *info, bool state)
 {
 #ifndef CONFIG_MSM_GVM_QUIN
+
 	if (!info->prop)
 		return;
 
@@ -1049,6 +1051,81 @@ static void cnss_wlan_release_resources(void)
 		regulator_put(vreg_info->wlan_reg_core);
 	vreg_info->state = VREG_OFF;
 }
+#else
+static void cnss_put_wlan_enable_gpio(void)
+{
+}
+
+static int cnss_wlan_vreg_on(struct cnss_wlan_vreg_info *vreg_info)
+{
+	return 0;
+}
+
+static int cnss_wlan_vreg_off(struct cnss_wlan_vreg_info *vreg_info)
+{
+	return 0;
+}
+
+static int cnss_wlan_vreg_set(struct cnss_wlan_vreg_info *vreg_info, bool state)
+{
+	return 0;
+}
+
+static int cnss_wlan_gpio_init(struct cnss_wlan_gpio_info *info)
+{
+	return 0;
+}
+
+static int cnss_wlan_bootstrap_gpio_init(void)
+{
+	return 0;
+}
+
+static void cnss_wlan_gpio_set(struct cnss_wlan_gpio_info *info, bool state)
+{
+}
+
+static int cnss_configure_wlan_en_gpio(bool state)
+{
+	return 0;
+}
+
+static int cnss_pinctrl_init(struct cnss_wlan_gpio_info *gpio_info,
+			     struct platform_device *pdev)
+{
+	return 0;
+}
+
+static void cnss_disable_xtal_ldo(struct platform_device *pdev)
+{
+}
+
+static int cnss_enable_xtal_ldo(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static int cnss_get_wlan_enable_gpio(
+	struct cnss_wlan_gpio_info *gpio_info,
+	struct platform_device *pdev)
+{
+	return 0;
+}
+
+static int cnss_get_wlan_bootstrap_gpio(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static int cnss_wlan_get_resources(struct platform_device *pdev)
+{
+	return 0;
+}
+
+static void cnss_wlan_release_resources(void)
+{
+}
+#endif
 
 static u8 cnss_get_pci_dev_bus_number(struct pci_dev *pdev)
 {
@@ -1526,6 +1603,7 @@ struct pci_saved_state *cnss_pci_store_saved_state(struct pci_dev *dev)
 	return pci_store_saved_state(dev);
 }
 
+#ifndef CONFIG_GHS_VMM
 int cnss_msm_pcie_pm_control(
 		enum msm_pcie_pm_opt pm_opt, u32 bus_num,
 		struct pci_dev *pdev, u32 options)
@@ -1563,6 +1641,45 @@ int cnss_msm_pcie_enumerate(u32 rc_idx)
 {
 	return msm_pcie_enumerate(rc_idx);
 }
+#else
+int cnss_msm_pcie_pm_control(
+		enum msm_pcie_pm_opt pm_opt, u32 bus_num,
+		struct pci_dev *pdev, u32 options)
+{
+	return 0;
+}
+
+int cnss_pci_load_and_free_saved_state(
+	struct pci_dev *dev, struct pci_saved_state **state)
+{
+	return 0;
+}
+
+int cnss_msm_pcie_shadow_control(struct pci_dev *dev, bool enable)
+{
+	return 0;
+}
+
+int cnss_msm_pcie_deregister_event(struct msm_pcie_register_event *reg)
+{
+	return 0;
+}
+
+int cnss_msm_pcie_recover_config(struct pci_dev *dev)
+{
+	return 0;
+}
+
+int cnss_msm_pcie_register_event(struct msm_pcie_register_event *reg)
+{
+	return 0;
+}
+
+int cnss_msm_pcie_enumerate(u32 rc_idx)
+{
+	return 0;
+}
+#endif
 #else /* !defined CONFIG_PCI_MSM */
 struct pci_saved_state *cnss_pci_store_saved_state(struct pci_dev *dev)
 {
