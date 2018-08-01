@@ -2560,7 +2560,7 @@
 		qcom,ipa-advertise-sg-support;
 	};
 
-	pcie_ep: qcom,pcie@00600000 {
+	pcie_ep: qcom,pcie-ep@00600000 {
 		compatible = "qcom,pcie-ep";
 
 		reg = <0x0c001000 0x1000>,
