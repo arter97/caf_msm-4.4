@@ -13,7 +13,7 @@
 #include "hab.h"
 #include "hab_qvm.h"
 
-static inline void habhyp_notify(void *commdev)
+inline void habhyp_notify(void *commdev)
 {
 	struct qvm_channel *dev = (struct qvm_channel *)commdev;
 

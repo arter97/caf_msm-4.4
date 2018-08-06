@@ -21,7 +21,7 @@
 	.openlock = __SPIN_LOCK_UNLOCKED(&hab_devices[__num__].openlock)\
 	}
 
-static const char hab_info_str[] = "Change: 16239527 Revision: #65";
+static const char hab_info_str[] = "Change: 16764735 Revision: #76";
 
 /*
  * The following has to match habmm definitions, order does not matter if
@@ -1369,6 +1369,9 @@ static int __init hab_init(void)
 		} else
 			set_dma_ops(hab_driver.dev, &hab_dma_ops);
 	}
+
+	hab_stat_init(&hab_driver);
+
 	return result;
 
 err:
@@ -1388,6 +1391,7 @@ static void __exit hab_exit(void)
 	dev_t dev;
 
 	hab_hypervisor_unregister();
+	hab_stat_deinit(&hab_driver);
 	hab_ctx_put(hab_driver.kctx);
 	dev = MKDEV(MAJOR(hab_driver.major), 0);
 	device_destroy(hab_driver.class, dev);
