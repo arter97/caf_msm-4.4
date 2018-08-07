@@ -117,8 +117,10 @@ void a5xx_preempt_trigger(struct msm_gpu *gpu)
 	 * Try to start preemption by moving from NONE to START. If
 	 * unsuccessful, a preemption is already in flight
 	 */
-	if (!try_preempt_state(a5xx_gpu, PREEMPT_NONE, PREEMPT_START))
+	if (!try_preempt_state(a5xx_gpu, PREEMPT_NONE, PREEMPT_START)) {
+		msm_preempt_sched(gpu);
 		return;
+	}
 
 	/* Get the next ring to preempt to */
 	ring = get_next_ring(gpu);

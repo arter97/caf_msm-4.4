@@ -67,6 +67,7 @@ struct msm_gpu_funcs {
 	uint32_t (*submitted_fence)(struct msm_gpu *gpu,
 			struct msm_ringbuffer *ring);
 	struct msm_ringbuffer *(*active_ring)(struct msm_gpu *gpu);
+	void (*preempt_trigger)(struct msm_gpu *gpu);
 	void (*recover)(struct msm_gpu *gpu);
 	void (*destroy)(struct msm_gpu *gpu);
 #ifdef CONFIG_DEBUG_FS
@@ -145,6 +146,10 @@ struct msm_gpu {
 	struct timer_list hangcheck_timer;
 	struct work_struct recover_work;
 	struct msm_snapshot *snapshot;
+
+	/* Preemption async trigger */
+	struct work_struct preempt_worker;
+	struct timer_list preempt_sched_timer;
 };
 
 struct msm_gpu_submitqueue {
@@ -262,6 +267,8 @@ int msm_gpu_perfcntr_sample(struct msm_gpu *gpu, uint32_t *activetime,
 
 void msm_gpu_retire(struct msm_gpu *gpu);
 int msm_gpu_submit(struct msm_gpu *gpu, struct msm_gem_submit *submit);
+
+void msm_preempt_sched(struct msm_gpu *gpu);
 
 int msm_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 		struct msm_gpu *gpu, const struct msm_gpu_funcs *funcs,
