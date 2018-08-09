@@ -2511,7 +2511,8 @@ error:
 
 int dsi_display_prepare(struct dsi_display *display)
 {
-	int rc = 0, i, j;
+	int rc = 0;
+	int i = 0, j;
 
 	if (!display) {
 		pr_err("Invalid params\n");
