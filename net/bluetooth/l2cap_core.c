@@ -3305,7 +3305,7 @@ static int l2cap_parse_conf_req(struct l2cap_chan *chan, void *data, size_t data
 	int type, hint, olen;
 	unsigned long val;
 	struct l2cap_conf_rfc rfc = { .mode = L2CAP_MODE_BASIC };
-	struct l2cap_conf_efs efs;
+	struct l2cap_conf_efs efs = { 0 };
 	u8 remote_efs = 0;
 	u16 mtu = L2CAP_DEFAULT_MTU;
 	u16 result = L2CAP_CONF_SUCCESS;
@@ -3520,7 +3520,7 @@ static int l2cap_parse_conf_rsp(struct l2cap_chan *chan, void *rsp, int len,
 	int type, olen;
 	unsigned long val;
 	struct l2cap_conf_rfc rfc = { .mode = L2CAP_MODE_BASIC };
-	struct l2cap_conf_efs efs;
+	struct l2cap_conf_efs efs = { 0 };
 
 	BT_DBG("chan %pK, rsp %pK, len %d, req %pK", chan, rsp, len, data);
 
