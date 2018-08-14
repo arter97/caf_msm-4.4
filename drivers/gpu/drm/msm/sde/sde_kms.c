@@ -1031,7 +1031,7 @@ static int sde_kms_hw_init(struct msm_kms *kms)
 		sde_kms->mmio = NULL;
 		goto error;
 	}
-	DRM_INFO("mapped mdp address space @%p\n", sde_kms->mmio);
+	DRM_INFO("mapped mdp address space @%pK\n", sde_kms->mmio);
 
 	sde_kms->vbif[VBIF_RT] = msm_ioremap(dev->platformdev,
 			"vbif_phys", "VBIF");
