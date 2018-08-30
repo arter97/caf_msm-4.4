@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -90,6 +90,7 @@ static inline uint32_t SDE_HDMI_VSYNC_TOTAL_F2_V_TOTAL(uint32_t val)
 struct sde_hdmi_bridge {
 	struct drm_bridge base;
 	struct hdmi *hdmi;
+	struct sde_hdmi *display;
 };
 #define to_hdmi_bridge(x) container_of(x, struct sde_hdmi_bridge, base)
 
@@ -124,24 +125,19 @@ static void sde_hdmi_clear_hdr_info(struct drm_bridge *bridge)
 	connector->hdr_supported = false;
 }
 
-static void _sde_hdmi_bridge_power_on(struct drm_bridge *bridge)
+static int _sde_hdmi_bridge_power_on(struct drm_bridge *bridge)
 {
 	struct sde_hdmi_bridge *sde_hdmi_bridge = to_hdmi_bridge(bridge);
 	struct hdmi *hdmi = sde_hdmi_bridge->hdmi;
 	const struct hdmi_platform_config *config = hdmi->config;
-	struct sde_connector *c_conn = to_sde_connector(hdmi->connector);
-	struct sde_hdmi *display = NULL;
-	int i, ret;
+	int i, ret = 0;
+	struct sde_hdmi *display = sde_hdmi_bridge->display;
 
-	if (c_conn)
-		display = (struct sde_hdmi *)c_conn->display;
-
-	if (display) {
-		if (display->non_pluggable) {
-			ret = sde_hdmi_core_enable(display);
-			if (ret)
-				SDE_ERROR("failed to enable HDMI core (%d)\n",
-					ret);
+	if ((display->non_pluggable) && (!hdmi->power_on)) {
+		ret = sde_hdmi_core_enable(display);
+		if (ret) {
+			SDE_ERROR("failed to enable HDMI core (%d)\n", ret);
+			goto err_core_enable;
 		}
 	}
 
@@ -150,15 +146,17 @@ static void _sde_hdmi_bridge_power_on(struct drm_bridge *bridge)
 		if (ret) {
 			SDE_ERROR("failed to enable pwr regulator: %s (%d)\n",
 					config->pwr_reg_names[i], ret);
+			goto err_regulator_enable;
 		}
 	}
 
-	if (config->pwr_clk_cnt > 0) {
+	if (config->pwr_clk_cnt > 0 && hdmi->pixclock) {
 		DRM_DEBUG("pixclock: %lu", hdmi->pixclock);
 		ret = clk_set_rate(hdmi->pwr_clks[0], hdmi->pixclock);
 		if (ret) {
-			SDE_ERROR("failed to set pixel clk: %s (%d)\n",
-					config->pwr_clk_names[0], ret);
+			pr_warn("failed to set pixclock: %s %ld (%d)\n",
+				config->pwr_clk_names[0],
+				hdmi->pixclock, ret);
 		}
 	}
 
@@ -167,18 +165,31 @@ static void _sde_hdmi_bridge_power_on(struct drm_bridge *bridge)
 		if (ret) {
 			SDE_ERROR("failed to enable pwr clk: %s (%d)\n",
 					config->pwr_clk_names[i], ret);
+			goto err_prepare_enable;
 		}
 	}
+	goto exit;
+
+err_prepare_enable:
+	for (i = 0; i < config->pwr_clk_cnt; i++)
+		clk_disable_unprepare(hdmi->pwr_clks[i]);
+err_regulator_enable:
+	for (i = 0; i < config->pwr_reg_cnt; i++)
+		regulator_disable(hdmi->pwr_regs[i]);
+err_core_enable:
+	if (display->non_pluggable)
+		sde_hdmi_core_disable(display);
+exit:
+	return ret;
 }
 
-static void _sde_hdmi_bridge_power_off(struct drm_bridge *bridge)
+static int _sde_hdmi_bridge_power_off(struct drm_bridge *bridge)
 {
 	struct sde_hdmi_bridge *sde_hdmi_bridge = to_hdmi_bridge(bridge);
 	struct hdmi *hdmi = sde_hdmi_bridge->hdmi;
 	const struct hdmi_platform_config *config = hdmi->config;
-	struct sde_connector *c_conn = to_sde_connector(hdmi->connector);
-	struct sde_hdmi *display = (struct sde_hdmi *)c_conn->display;
-	int i, ret;
+	struct sde_hdmi *display = sde_hdmi_bridge->display;
+	int i, ret = 0;
 
 	/* Wait for vsync */
 	msleep(20);
@@ -188,15 +199,15 @@ static void _sde_hdmi_bridge_power_off(struct drm_bridge *bridge)
 
 	for (i = 0; i < config->pwr_reg_cnt; i++) {
 		ret = regulator_disable(hdmi->pwr_regs[i]);
-		if (ret) {
+		if (ret)
 			SDE_ERROR("failed to disable pwr regulator: %s (%d)\n",
 					config->pwr_reg_names[i], ret);
-		}
 	}
 
-	if (display->non_pluggable) {
+	if (display->non_pluggable)
 		sde_hdmi_core_disable(display);
-	}
+
+	return ret;
 }
 
 static int _sde_hdmi_bridge_ddc_clear_irq(struct hdmi *hdmi,
@@ -382,7 +393,7 @@ static int _sde_hdmi_bridge_setup_scrambler(struct hdmi *hdmi,
 		scrambler_on = connector->supports_scramble;
 	}
 
-	DRM_INFO("scrambler %s\n", scrambler_on ? "on" : "off");
+	//DRM_INFO("scrambler %s\n", scrambler_on ? "on" : "off");
 
 	if (scrambler_on) {
 		rc = sde_hdmi_scdc_write(hdmi,
@@ -490,15 +501,19 @@ static void _sde_hdmi_bridge_pre_enable(struct drm_bridge *bridge)
 	struct sde_hdmi_bridge *sde_hdmi_bridge = to_hdmi_bridge(bridge);
 	struct hdmi *hdmi = sde_hdmi_bridge->hdmi;
 	struct hdmi_phy *phy = hdmi->phy;
-	struct sde_connector *c_conn = to_sde_connector(hdmi->connector);
-	struct sde_hdmi *display = (struct sde_hdmi *)c_conn->display;
+	struct sde_hdmi *display = sde_hdmi_bridge->display;
 
 	DRM_DEBUG("power up");
 
 	if (!hdmi->power_on) {
-		_sde_hdmi_bridge_power_on(bridge);
+		if (_sde_hdmi_bridge_power_on(bridge)) {
+			DEV_ERR("failed to power on bridge\n");
+			return;
+		}
 		hdmi->power_on = true;
 	}
+	if (!display->skip_ddc)
+		_sde_hdmi_bridge_setup_scrambler(hdmi, &display->mode);
 
 	if (phy)
 		phy->funcs->powerup(phy, hdmi->pixclock);
@@ -572,8 +587,7 @@ static void _sde_hdmi_bridge_enable(struct drm_bridge *bridge)
 {
 	struct sde_hdmi_bridge *sde_hdmi_bridge = to_hdmi_bridge(bridge);
 	struct hdmi *hdmi = sde_hdmi_bridge->hdmi;
-	struct sde_connector *c_conn = to_sde_connector(hdmi->connector);
-	struct sde_hdmi *display = (struct sde_hdmi *)c_conn->display;
+	struct sde_hdmi *display = sde_hdmi_bridge->display;
 
 	/* need to update hdcp info here to ensure right HDCP support*/
 	sde_hdmi_update_hdcp_info(hdmi->connector);
@@ -588,9 +602,7 @@ static void _sde_hdmi_bridge_enable(struct drm_bridge *bridge)
 static void _sde_hdmi_bridge_disable(struct drm_bridge *bridge)
 {
 	struct sde_hdmi_bridge *sde_hdmi_bridge = to_hdmi_bridge(bridge);
-	struct hdmi *hdmi = sde_hdmi_bridge->hdmi;
-	struct sde_connector *c_conn = to_sde_connector(hdmi->connector);
-	struct sde_hdmi *display = (struct sde_hdmi *)c_conn->display;
+	struct sde_hdmi *display = sde_hdmi_bridge->display;
 
 	mutex_lock(&display->display_lock);
 
@@ -610,8 +622,7 @@ static void _sde_hdmi_bridge_post_disable(struct drm_bridge *bridge)
 	struct sde_hdmi_bridge *sde_hdmi_bridge = to_hdmi_bridge(bridge);
 	struct hdmi *hdmi = sde_hdmi_bridge->hdmi;
 	struct hdmi_phy *phy = hdmi->phy;
-	struct sde_connector *c_conn = to_sde_connector(hdmi->connector);
-	struct sde_hdmi *display = (struct sde_hdmi *)c_conn->display;
+	struct sde_hdmi *display = sde_hdmi_bridge->display;
 
 	sde_hdmi_notify_clients(display, display->connected);
 
@@ -811,6 +822,8 @@ static u32 _sde_hdmi_choose_best_format(struct hdmi *hdmi,
 	 */
 	int dc_format;
 	struct drm_connector *connector = hdmi->connector;
+	struct sde_connector *c_conn = to_sde_connector(connector);
+	struct sde_hdmi *display = (struct sde_hdmi *)c_conn->display;
 
 	dc_format = sde_hdmi_sink_dc_support(connector, mode);
 	if (dc_format & MSM_MODE_FLAG_RGB444_DC_ENABLE)
@@ -824,7 +837,8 @@ static u32 _sde_hdmi_choose_best_format(struct hdmi *hdmi,
 	else if (mode->flags & DRM_MODE_FLAG_SUPPORTS_YUV)
 		return MSM_MODE_FLAG_COLOR_FORMAT_YCBCR420;
 
-	SDE_ERROR("Can't get available best display format\n");
+	if (display && !display->non_pluggable)
+		SDE_ERROR("Can't get available best display format\n");
 
 	return MSM_MODE_FLAG_COLOR_FORMAT_RGB444;
 }
@@ -835,19 +849,12 @@ static void _sde_hdmi_bridge_mode_set(struct drm_bridge *bridge,
 {
 	struct sde_hdmi_bridge *sde_hdmi_bridge = to_hdmi_bridge(bridge);
 	struct hdmi *hdmi = sde_hdmi_bridge->hdmi;
-	struct drm_connector *connector = hdmi->connector;
-	struct sde_connector *c_conn = to_sde_connector(connector);
-	struct sde_hdmi *display = (struct sde_hdmi *)c_conn->display;
+	struct sde_hdmi *display = sde_hdmi_bridge->display;
 	int hstart, hend, vstart, vend;
 	uint32_t frame_ctrl;
 	u32 div = 0;
 
 	mode = adjusted_mode;
-
-	if (display->non_pluggable && !hdmi->power_on) {
-		if (sde_hdmi_core_enable(display))
-			pr_err("mode set enable core failured\n");
-	}
 
 	display->dc_enable = mode->private_flags &
 				(MSM_MODE_FLAG_RGB444_DC_ENABLE |
@@ -923,11 +930,7 @@ static void _sde_hdmi_bridge_mode_set(struct drm_bridge *bridge,
 	}
 
 	_sde_hdmi_save_mode(hdmi, mode);
-	_sde_hdmi_bridge_setup_scrambler(hdmi, mode);
 	_sde_hdmi_bridge_setup_deep_color(hdmi);
-	if (display->non_pluggable && !hdmi->power_on) {
-		sde_hdmi_core_disable(display);
-	}
 }
 
 static bool _sde_hdmi_bridge_mode_fixup(struct drm_bridge *bridge,
@@ -961,7 +964,8 @@ static const struct drm_bridge_funcs _sde_hdmi_bridge_funcs = {
 
 
 /* initialize bridge */
-struct drm_bridge *sde_hdmi_bridge_init(struct hdmi *hdmi)
+struct drm_bridge *sde_hdmi_bridge_init(struct hdmi *hdmi,
+			struct sde_hdmi *display)
 {
 	struct drm_bridge *bridge = NULL;
 	struct sde_hdmi_bridge *sde_hdmi_bridge;
@@ -975,6 +979,7 @@ struct drm_bridge *sde_hdmi_bridge_init(struct hdmi *hdmi)
 	}
 
 	sde_hdmi_bridge->hdmi = hdmi;
+	sde_hdmi_bridge->display = display;
 
 	bridge = &sde_hdmi_bridge->base;
 	bridge->funcs = &_sde_hdmi_bridge_funcs;

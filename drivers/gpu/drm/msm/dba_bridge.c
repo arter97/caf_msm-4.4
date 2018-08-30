@@ -51,6 +51,7 @@ struct dba_bridge {
 	u32 num_of_input_lanes;
 	bool pluggable;
 	u32 panel_count;
+	bool cont_splash_enabled;
 };
 #define to_dba_bridge(x)     container_of((x), struct dba_bridge, base)
 
@@ -123,10 +124,18 @@ error:
 
 static void _dba_bridge_pre_enable(struct drm_bridge *bridge)
 {
+	struct dba_bridge *d_bridge;
+
 	if (!bridge) {
 		SDE_ERROR("Invalid params\n");
 		return;
 	}
+
+	d_bridge = to_dba_bridge(bridge);
+
+	/* Skip power_on calling when splash is enabled in bootloader. */
+	if ((d_bridge->ops.power_on) && (!d_bridge->cont_splash_enabled))
+		d_bridge->ops.power_on(d_bridge->dba_ctx, true, 0);
 }
 
 static void _dba_bridge_enable(struct drm_bridge *bridge)
@@ -186,7 +195,8 @@ static void _dba_bridge_enable(struct drm_bridge *bridge)
 			video_cfg.scaninfo, video_cfg.ar, video_cfg.vic);
 	}
 
-	if (d_bridge->ops.video_on) {
+	/* Skip video_on calling if splash is enabled in bootloader. */
+	if ((d_bridge->ops.video_on) && (!d_bridge->cont_splash_enabled)) {
 		rc = d_bridge->ops.video_on(d_bridge->dba_ctx, true,
 						&video_cfg, 0);
 		if (rc)
@@ -318,6 +328,7 @@ struct drm_bridge *dba_bridge_init(struct drm_device *dev,
 	bridge->panel_count = data->panel_count;
 	bridge->base.funcs = &_dba_bridge_ops;
 	bridge->base.encoder = encoder;
+	bridge->cont_splash_enabled = data->cont_splash_enabled;
 
 	rc = drm_bridge_attach(dev, &bridge->base);
 	if (rc) {
@@ -333,7 +344,10 @@ struct drm_bridge *dba_bridge_init(struct drm_device *dev,
 		encoder->bridge = &bridge->base;
 	}
 
-	if (!bridge->pluggable) {
+	/* If early splash has enabled bridge chip in bootloader,
+	 * below call should be skipped.
+	 */
+	if (!bridge->pluggable && !bridge->cont_splash_enabled) {
 		if (bridge->ops.power_on)
 			bridge->ops.power_on(bridge->dba_ctx, true, 0);
 		if (bridge->ops.check_hpd)

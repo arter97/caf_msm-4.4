@@ -609,6 +609,7 @@
 
 &sde_hdmi {
 	qcom,non-pluggable;
+	qcom,skip_ddc;
 	qcom,customize-modes {
 		qcom,customize-mode-id@0 {
 			qcom,mode-name = "1920x1080@60Hz";
@@ -930,6 +931,7 @@
 		vdd-ntn-pci-supply = <&pm8994_s4>;
 		vdd-ntn-io-supply = <&pm8994_s4>;
 
+		qcom,ntn-irq-affinity-to-cpu = <2>;
 		qcom,ntn-rst-delay-msec = <100>;
 		qcom,ntn-rc-num = <1>;
 		qcom,ntn-bus-num = <1>;
@@ -1112,6 +1114,20 @@
 		interrupt-parent = <&spmi_bus>;
 		interrupts = <0x0 0x9 0x0 IRQ_TYPE_NONE>;
 		interrupt-names ="pmic_id_irq";
+	};
+
+	qcom,msm-lpass-resource-manager {
+		compatible = "qcom,lpass-resource-manager";
+		qcom,lpass-lpaif-reg = <0x09100000 0x20000>;
+		qcom,lpass-max-rddma = <5>;
+		qcom,lpass-max-wrdma = <4>;
+		qcom,num-reserved-rddma = <0>;
+		qcom,num-reserved-wrdma = <0>;
+		qcom,reserved-rddma = <0>;
+		qcom,reserved-wrdma = <0>;
+		qcom,early-audio-enabled = <0>;
+		qcom,max-num-pcm-intf = <4>;
+		qcom,early-audio-pcm = <2>;
 	};
 
 	loopback1: qcom,msm-pcm-loopback-low-latency {
@@ -1525,8 +1541,16 @@
 	};
 };
 
+&mdss_rotator {
+	status = "disabled";
+};
+
 &vfe_smmu {
 	qcom,no-smr-check;
+};
+
+&sde_wb {
+	status = "disabled";
 };
 
 / {
@@ -1545,4 +1569,18 @@
 			label = "early_audio_mem";
 		};
 	};
+};
+
+/ {
+	qcom,sde-reserved-plane {
+		qcom,sde-plane-id@0 {
+			reg = <0x0>;
+			qcom,plane-name = "vig0";
+		};
+	};
+};
+
+&sde_kms {
+	contiguous-region = <&cont_splash_mem &cont_splash_mem_hdmi
+				&early_camera_mem>;
 };

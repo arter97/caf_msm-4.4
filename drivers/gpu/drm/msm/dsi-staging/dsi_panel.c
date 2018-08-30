@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -297,7 +297,7 @@ static int dsi_panel_pinctrl_init(struct dsi_panel *panel)
 	panel->pinctrl.pinctrl = devm_pinctrl_get(panel->parent);
 	if (IS_ERR_OR_NULL(panel->pinctrl.pinctrl)) {
 		rc = PTR_ERR(panel->pinctrl.pinctrl);
-		pr_err("failed to get pinctrl, rc=%d\n", rc);
+		rc = 0;
 		goto error;
 	}
 
@@ -1343,7 +1343,7 @@ static int dsi_panel_parse_power_cfg(struct device *parent,
 					  &panel->power_info,
 					  "qcom,panel-supply-entries");
 	if (rc) {
-		pr_err("[%s] failed to parse vregs\n", panel->name);
+		rc = 0;
 		goto error;
 	}
 
@@ -1362,8 +1362,7 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel,
 					      "qcom,platform-reset-gpio",
 					      0);
 	if (!gpio_is_valid(panel->reset_config.reset_gpio)) {
-		pr_err("[%s] failed get reset gpio, rc=%d\n", panel->name, rc);
-		rc = -EINVAL;
+		rc = 0;
 		goto error;
 	}
 
@@ -1497,8 +1496,7 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel,
 					      "qcom,platform-bklight-en-gpio",
 					      0);
 	if (!gpio_is_valid(panel->bl_config.en_gpio)) {
-		pr_err("[%s] failed get bklt gpio, rc=%d\n", panel->name, rc);
-		rc = -EINVAL;
+		rc = 0;
 		goto error;
 	}
 
@@ -1579,10 +1577,13 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 		goto error;
 	}
 
-	rc = dsi_panel_parse_cmd_sets(panel, of_node);
-	if (rc) {
-		pr_err("failed to parse command sets, rc=%d\n", rc);
-		goto error;
+	/* only available in dsi cmd mode */
+	if (panel->mode.panel_mode == DSI_OP_CMD_MODE) {
+		rc = dsi_panel_parse_cmd_sets(panel, of_node);
+		if (rc) {
+			pr_err("failed to parse command sets, rc=%d\n", rc);
+			goto error;
+		}
 	}
 
 	rc = dsi_panel_parse_power_cfg(parent, panel, of_node);

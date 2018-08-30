@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,6 +18,12 @@
 #include <linux/list.h>
 
 #define MSM_MPM_NR_MPM_IRQS  64
+
+enum msm_mpm_irq_domain {
+	MSM_MPM_GIC_IRQ_DOMAIN,
+	MSM_MPM_GPIO_IRQ_DOMAIN,
+	MSM_MPM_NR_IRQ_DOMAINS,
+};
 
 #if defined(CONFIG_MSM_MPM_OF)
 /**
@@ -113,6 +119,8 @@ void msm_mpm_exit_sleep(bool from_idle);
 /**
  * of_mpm_init() - Device tree initialization function
  *
+ * @domain: which irq domain(gic or gpio)
+ *
  * The initialization function is called after * GPIO/GIC device initialization
  * routines are called and before any device irqs are requested. MPM driver
  * keeps track of all enabled/wakeup interrupts in the system to be able to
@@ -121,7 +129,7 @@ void msm_mpm_exit_sleep(bool from_idle);
  * system is in a low power mode. The initialization function constructs the MPM
  * mapping between the IRQs and the MPM pin based on data in the device tree.
  */
-void of_mpm_init(void);
+void of_mpm_init(enum msm_mpm_irq_domain domain);
 #else
 static inline int msm_mpm_enable_irq(unsigned int irq, unsigned int enable)
 { return -ENODEV; }
@@ -143,7 +151,7 @@ static inline bool msm_mpm_gpio_irqs_detectable(bool from_idle)
 static inline void msm_mpm_enter_sleep(uint64_t sclk_count, bool from_idle,
 		const struct cpumask *cpumask) {}
 static inline void msm_mpm_exit_sleep(bool from_idle) {}
-static inline void of_mpm_init(void) {}
+static inline void of_mpm_init(enum msm_mpm_irq_domain domain) {}
 #endif
 #ifdef CONFIG_MSM_MPM_OF
 /** msm_mpm_suspend_prepare() - Called at prepare_late() op during suspend

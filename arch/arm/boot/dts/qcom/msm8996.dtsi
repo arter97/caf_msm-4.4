@@ -2909,6 +2909,12 @@
 		vdd-dig-supply = <&pm8994_s1_floor_corner>;
 		vdd-gfx-supply = <&gfx_vreg>;
 
+		qcom,disable-psm;
+		qcom,disable-ocr;
+		qcom,disable-vdd-mx;
+		qcom,disable-cx-phase-ctrl;
+		qcom,disable-gfx-phase-ctrl;
+
 		qcom,vdd-dig-rstr{
 			qcom,vdd-rstr-reg = "vdd-dig";
 			qcom,levels = <5 7 7>; /* Nominal, Super Turbo, Super Turbo */

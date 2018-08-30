@@ -72,6 +72,9 @@ static const int ipa_ihl_ofst_meq32[] = { IPA_IHL_OFFSET_MEQ32_0,
 
 #define INVALID_EP_MAPPING_INDEX (-1)
 
+#define IPA_IS_RAN_OUT_OF_EQ(__eq_array, __eq_index) \
+		(ARRAY_SIZE(__eq_array) <= (__eq_index))
+
 static const int ep_mapping[3][IPA_CLIENT_MAX] = {
 	[IPA_1_1][IPA_CLIENT_HSIC1_PROD]         = 19,
 	[IPA_1_1][IPA_CLIENT_WLAN1_PROD]         = -1,
@@ -1476,6 +1479,11 @@ int ipa_generate_hw_rule(enum ipa_ip_type ip,
 		}
 
 		if (attrib->attrib_mask & IPA_FLT_L2TP_INNER_IP_TYPE) {
+			if (IPA_IS_RAN_OUT_OF_EQ(ipa_ihl_ofst_meq32,
+							ihl_ofst_meq32)) {
+				IPAERR("ran out of ihl_meq32 eq\n");
+				return -EPERM;
+			}
 			if (ipa_ihl_ofst_meq32[ihl_ofst_meq32] == -1) {
 				IPAERR("ran out of ihl_meq32 eq\n");
 				return -EPERM;
@@ -1493,6 +1501,11 @@ int ipa_generate_hw_rule(enum ipa_ip_type ip,
 		}
 
 		if (attrib->attrib_mask & IPA_FLT_L2TP_INNER_IPV4_DST_ADDR) {
+			if (IPA_IS_RAN_OUT_OF_EQ(ipa_ihl_ofst_meq32,
+							ihl_ofst_meq32)) {
+				IPAERR("ran out of ihl_meq32 eq\n");
+				return -EPERM;
+			}
 			if (ipa_ihl_ofst_meq32[ihl_ofst_meq32] == -1) {
 				IPAERR("ran out of ihl_meq32 eq\n");
 				return -EPERM;
