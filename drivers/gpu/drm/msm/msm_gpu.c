@@ -331,6 +331,15 @@ out:
 	queue_work(priv->wq, &gpu->retire_work);
 }
 
+static void preempt_handler(unsigned long data)
+{
+	struct msm_gpu *gpu = (struct msm_gpu *)data;
+	struct drm_device *dev = gpu->dev;
+	struct msm_drm_private *priv = dev->dev_private;
+
+	queue_work(priv->wq, &gpu->preempt_worker);
+}
+
 /*
  * Performance Counters:
  */
@@ -573,6 +582,23 @@ int msm_gpu_submit(struct msm_gpu *gpu, struct msm_gem_submit *submit)
 	hangcheck_timer_reset(gpu);
 
 	return 0;
+}
+
+#define PREEMT_SLOT msecs_to_jiffies(5)
+
+void msm_preempt_sched(struct msm_gpu *gpu)
+{
+	mod_timer(&gpu->preempt_sched_timer,
+			round_jiffies_up(jiffies + PREEMT_SLOT));
+}
+
+static void preempt_worker(struct work_struct *work)
+{
+	struct msm_gpu *gpu = container_of(work, struct msm_gpu,
+						preempt_worker);
+	if (gpu->funcs->preempt_trigger)
+		gpu->funcs->preempt_trigger(gpu);
+
 }
 
 struct msm_context_counter {
@@ -819,9 +845,11 @@ int msm_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 	INIT_LIST_HEAD(&gpu->active_list);
 	INIT_WORK(&gpu->retire_work, retire_worker);
 	INIT_WORK(&gpu->recover_work, recover_worker);
-
+	INIT_WORK(&gpu->preempt_worker, preempt_worker);
 
 	setup_timer(&gpu->hangcheck_timer, hangcheck_handler,
+			(unsigned long)gpu);
+	setup_timer(&gpu->preempt_sched_timer, preempt_handler,
 			(unsigned long)gpu);
 
 	spin_lock_init(&gpu->perf_lock);
