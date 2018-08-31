@@ -794,17 +794,12 @@ static int diag_cmd_set_msg_mask(unsigned char *src_buf, int src_len,
 		mutex_unlock(&driver->md_session_lock);
 		return -EINVAL;
 	}
-<<<<<<< HEAD
-	for (i = 0; i < driver->msg_mask_tbl_count; i++, mask++) {
-		if (i < (driver->msg_mask_tbl_count - 1)) {
-=======
 	msg_mask_tbl_count = (info) ? info->msg_mask_tbl_count :
 			driver->msg_mask_tbl_count;
 	for (i = 0; i < msg_mask_tbl_count; i++, mask++) {
 		if (!mask->ptr)
 			continue;
 		if (i < (msg_mask_tbl_count - 1)) {
->>>>>>> 3977c31... diag: Prevent out of bound access while initializing msg mask
 			mask_next = mask;
 			mask_next++;
 		} else
@@ -2107,15 +2102,11 @@ int diag_copy_to_user_msg_mask(char __user *buf, size_t count,
 		mutex_unlock(&mask_info->lock);
 		return -EINVAL;
 	}
-<<<<<<< HEAD
-	for (i = 0; i < driver->msg_mask_tbl_count; i++, mask++) {
-=======
 	msg_mask_tbl_count = (info) ? info->msg_mask_tbl_count :
 			driver->msg_mask_tbl_count;
 	for (i = 0; i < msg_mask_tbl_count; i++, mask++) {
 		if (!mask->ptr)
 			continue;
->>>>>>> 3977c31... diag: Prevent out of bound access while initializing msg mask
 		ptr = mask_info->update_buf;
 		len = 0;
 		mutex_lock(&mask->lock);
