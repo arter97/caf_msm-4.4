@@ -13,7 +13,7 @@ dm_verity {
 	dmname="disabled";
 	version="1";
 	data_device="/dev/mmcblk0p18";
-	hash_device="/dev/mmcblkop18";
+	hash_device="/dev/mmcblk0p18";
 	data_block_size="4096";
 	hash_block_size="4096";
 	number_of_data_blocks="262144";
