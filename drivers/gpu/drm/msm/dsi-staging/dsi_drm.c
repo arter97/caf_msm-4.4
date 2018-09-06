@@ -424,7 +424,7 @@ int dsi_connector_get_modes(struct drm_connector *connector,
 {
 	u32 count = 0;
 	u32 size = 0;
-	struct dsi_display_mode *modes;
+	struct dsi_display_mode *modes = NULL;
 	struct drm_display_mode drm_mode;
 	int rc, i;
 
@@ -439,7 +439,7 @@ int dsi_connector_get_modes(struct drm_connector *connector,
 	rc = dsi_display_get_modes(display, NULL, &count);
 	if (rc) {
 		pr_err("failed to get num of modes, rc=%d\n", rc);
-		goto error;
+		goto end;
 	}
 
 	size = count * sizeof(*modes);
