@@ -147,7 +147,7 @@ static int create_dispatcher(struct physical_channel *pchan)
 
 	pr_debug("request_irq: irq = %d, pchan name = %s",
 			dev->irq, pchan->name);
-	ret = request_irq(dev->irq, shm_irq_handler, IRQF_SHARED,
+	ret = request_irq(dev->irq, shm_irq_handler, IRQF_SHARED | IRQF_NO_SUSPEND,
 		pchan->name, pchan);
 
 	if (ret)
