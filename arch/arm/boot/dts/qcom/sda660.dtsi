@@ -22,6 +22,10 @@
 	qcom,rmnet-ipa {
 		status = "disabled";
 	};
+
+	qcom,icnss@18800000 {
+		status = "disabled";
+	};
 };
 
 &ipa_hw {
