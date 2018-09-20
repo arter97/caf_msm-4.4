@@ -41,6 +41,8 @@ struct msm_camera_sensor_slave_info32 {
 	uint8_t  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
 	enum msm_sensor_output_format_t output_format;
+	uint8_t is_stereo_config;
+	uint8_t stereo_aux;
 };
 
 struct msm_camera_csid_lut_params32 {
