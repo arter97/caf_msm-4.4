@@ -3596,6 +3596,7 @@ static int msm_pcie_clk_init(struct msm_pcie_dev_t *dev)
 		}
 	}
 
+#ifndef CONFIG_GHS_VMM
 	PCIE_DBG(dev, "PCIe: requesting bus vote for RC%d\n", dev->rc_idx);
 	if (dev->bus_client) {
 		rc = msm_bus_scale_client_update_request(dev->bus_client, 1);
@@ -3673,7 +3674,7 @@ static int msm_pcie_clk_init(struct msm_pcie_dev_t *dev)
 					dev->rc_idx, reset_info->name);
 		}
 	}
-
+#endif
 	PCIE_DBG(dev, "RC%d: exit\n", dev->rc_idx);
 
 	return rc;
@@ -3681,11 +3682,11 @@ static int msm_pcie_clk_init(struct msm_pcie_dev_t *dev)
 
 static void msm_pcie_clk_deinit(struct msm_pcie_dev_t *dev)
 {
+#ifndef CONFIG_GHS_VMM
 	int i;
 	int rc;
 
 	PCIE_DBG(dev, "RC%d: entry\n", dev->rc_idx);
-
 	for (i = 0; i < MSM_PCIE_MAX_CLK; i++)
 		if (dev->clk[i].hdl)
 			clk_disable_unprepare(dev->clk[i].hdl);
@@ -3704,7 +3705,7 @@ static void msm_pcie_clk_deinit(struct msm_pcie_dev_t *dev)
 				"PCIe: relinquish bus bandwidth for RC%d.\n",
 				dev->rc_idx);
 	}
-
+#endif
 	if (dev->gdsc_smmu)
 		regulator_disable(dev->gdsc_smmu);
 
