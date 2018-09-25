@@ -708,6 +708,8 @@ int32_t msm_sensor_driver_probe(void *setting,
 
 	unsigned long                        mount_pos = 0;
 	uint32_t                             is_yuv;
+	uint32_t                             i;
+	struct msm_sensor_ctrl_t            *p_ctrl = NULL;
 
 	/* Validate input parameters */
 	if (!setting) {
@@ -775,6 +777,10 @@ int32_t msm_sensor_driver_probe(void *setting,
 			slave_info32->sensor_init_params;
 		slave_info->output_format =
 			slave_info32->output_format;
+		slave_info->is_stereo_config =
+			slave_info32->is_stereo_config;
+		slave_info->stereo_aux =
+			slave_info32->stereo_aux;
 		kfree(slave_info32);
 	} else
 #endif
@@ -817,6 +823,9 @@ int32_t msm_sensor_driver_probe(void *setting,
 		slave_info->sensor_init_params.position);
 	CDBG("mount %d",
 		slave_info->sensor_init_params.sensor_mount_angle);
+	CDBG("stereo config %d stereo aux %d.\n",
+		slave_info->is_stereo_config,
+		slave_info->stereo_aux);
 
 	/* Validate camera id */
 	if (slave_info->camera_id >= MAX_CAMERAS) {
@@ -1034,6 +1043,33 @@ CSID_TG:
 	s_ctrl->sensordata->cam_slave_info = slave_info;
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
+
+	s_ctrl->peer_sensor_ctrl = NULL;
+	CDBG("camera %s for stereo check: is_stereo_config %d stereo_aux %d \n",
+	  slave_info->sensor_name, slave_info->is_stereo_config, slave_info->stereo_aux);
+	if (slave_info->is_stereo_config) {
+		if (slave_info->stereo_aux) {
+			for (i = 0; i < MAX_CAMERAS; i++) {
+				p_ctrl = g_sctrl[i];
+				if (p_ctrl && p_ctrl->sensordata && p_ctrl->sensordata->cam_slave_info &&
+					p_ctrl->sensordata->cam_slave_info->is_stereo_config &&
+					!p_ctrl->sensordata->cam_slave_info->stereo_aux &&
+					p_ctrl->peer_sensor_ctrl == NULL) {
+					p_ctrl->peer_sensor_ctrl = s_ctrl;
+					s_ctrl->peer_sensor_ctrl = p_ctrl;
+					pr_info("stereo camera for Left: %s(%d) Right: %s(%d)\n",
+					  p_ctrl->sensordata->sensor_name, p_ctrl->sensordata->cam_slave_info->stereo_aux,
+					  s_ctrl->sensordata->sensor_name, s_ctrl->sensordata->cam_slave_info->stereo_aux);
+					break;
+				}
+			}
+		} else {
+			CDBG("stereo camera for master camera\n");
+		}
+	}
+	if (s_ctrl->peer_sensor_ctrl == NULL) {
+	    CDBG("No stereo camera pair\n");
+	}
 
 	/*
 	 * Set probe succeeded flag to 1 so that no other camera shall
