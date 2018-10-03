@@ -4023,6 +4023,7 @@ static int dwc3_msm_pm_prepare(struct device *dev)
 static int dwc3_msm_pm_suspend(struct device *dev)
 {
 	int ret = 0;
+	bool wait;
 	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
 
@@ -4036,8 +4037,11 @@ static int dwc3_msm_pm_suspend(struct device *dev)
 	}
 
 	ret = dwc3_msm_suspend(mdwc, false);
-	if (!ret)
+	if (!ret) {
 		atomic_set(&mdwc->pm_suspended, 1);
+		wait = flush_work(&mdwc->bus_vote_w);
+		pr_info("Wait for bus_vote_w : %d\n", wait);
+	}
 
 	return ret;
 }
