@@ -64,6 +64,9 @@ struct msm_ba_v4l2_ioctl_t {
 	void __user *ptr;
 };
 
+#define MSM_BA_PRIV_S_SATURATION_U		(V4L2_CID_PRIVATE_BASE + 1)
+#define MSM_BA_PRIV_S_SATURATION_V		(V4L2_CID_PRIVATE_BASE + 2)
+
 /* ADV7481 private ioctls for CSI control params */
 #define VIDIOC_G_CSI_PARAMS \
 	_IOWR('V', BASE_VIDIOC_PRIVATE, struct msm_ba_v4l2_ioctl_t)

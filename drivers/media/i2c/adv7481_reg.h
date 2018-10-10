@@ -399,6 +399,13 @@
 #define CP_STDI_DVALID_CH1_BMSK                 0x0080
 #define CP_STDI_DVALID_CH1_SHFT                 7
 
+/* SDP Color Map Registers */
+#define SDP_REG_CONTRAST                        0x08
+#define SDP_REG_BRIGHTNESS                      0x0A
+#define SDP_REG_HUE			0x0B
+#define SDP_REG_SATURATION_U                    0xE3
+#define SDP_REG_SATURATION_V                    0xE4
+
 /* SDP Main Map */
 #define SDP_RW_MAP_REG                          0x0e
 

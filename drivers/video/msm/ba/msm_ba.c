@@ -375,11 +375,28 @@ EXPORT_SYMBOL(msm_ba_g_fmt);
 int msm_ba_s_ctrl(void *instance, struct v4l2_control *control)
 {
 	struct msm_ba_inst *inst = instance;
+	struct v4l2_subdev *sd = NULL;
+	int rc = 0;
 
 	if (!inst || !control)
 		return -EINVAL;
 
-	return v4l2_s_ctrl(NULL, &inst->ctrl_handler, control);
+	sd = inst->sd;
+	if (!sd) {
+		dprintk(BA_ERR, "No sd registered");
+		return -EINVAL;
+	}
+	if (BA_IS_PRIV_CTRL(control->id)) {
+		return v4l2_s_ctrl(NULL, &inst->ctrl_handler, control);
+	} else {
+		rc = v4l2_subdev_call(sd, core, s_ctrl, control);
+		if (rc) {
+			dprintk(BA_ERR, "Set color param failed %d for sd: %s",
+				rc, sd->name);
+			return -EINVAL;
+		}
+	}
+	return rc;
 }
 EXPORT_SYMBOL(msm_ba_s_ctrl);
 

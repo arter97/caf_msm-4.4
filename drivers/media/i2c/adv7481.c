@@ -84,6 +84,9 @@ static u32 adv7481_io_r_mb(void __iomem *addr)
 	return data;
 }
 
+#define CLAMP(x, low, high) \
+	(((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
 enum adv7481_gpio_t {
 
 	CCI_I2C_SDA = 0,
@@ -949,54 +952,74 @@ err_exit:
 	return ret;
 }
 
-static int adv7481_s_ctrl(struct v4l2_ctrl *ctrl)
+static int adv7481_s_color_ctrl(struct v4l2_subdev *sd,
+					struct v4l2_control *ctrl)
 {
-	struct v4l2_subdev *sd = to_sd(ctrl);
 	struct adv7481_state *state = to_state(sd);
-	int temp = 0x0;
+	int reg_value = 0;
 	int ret = 0;
 
 	pr_debug("Enter %s: id = 0x%x\n", __func__, ctrl->id);
+
+	if (state->mode != ADV7481_IP_CVBS_1) {
+		pr_err("Set color-controls supported only for CVBS\n");
+		return 0;
+	}
+
+	if (ctrl->id == V4L2_CID_HUE)
+		ctrl->value = CLAMP(ctrl->value, -127, 128);
+	else
+		ctrl->value = CLAMP(ctrl->value, -128, 127);
+
+	ret |= adv7481_wr_byte(&state->i2c_client,
+			state->i2c_sdp_addr, SDP_RW_MAP_REG, 0x00);
+
 	switch (ctrl->id) {
 	case V4L2_CID_BRIGHTNESS:
-		temp = adv7481_rd_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_VID_ADJ);
-		temp |= CP_CTR_VID_ADJ_EN;
-		ret = adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_VID_ADJ, temp);
-		ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_BRIGHTNESS, ctrl->val);
+		reg_value = ctrl->value + 256;
+		if (reg_value >= 256)
+			reg_value -= 256;
+		ret |= adv7481_wr_byte(&state->i2c_client,
+			state->i2c_sdp_addr, SDP_REG_BRIGHTNESS, reg_value);
 		break;
 	case V4L2_CID_CONTRAST:
-		temp = adv7481_rd_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_VID_ADJ);
-		temp |= CP_CTR_VID_ADJ_EN;
-		ret = adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_VID_ADJ, temp);
-		ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_CONTRAST, ctrl->val);
+		reg_value = ctrl->value + 128;
+		ret |= adv7481_wr_byte(&state->i2c_client,
+			state->i2c_sdp_addr, SDP_REG_CONTRAST, reg_value);
 		break;
 	case V4L2_CID_SATURATION:
-		temp = adv7481_rd_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_VID_ADJ);
-		temp |= CP_CTR_VID_ADJ_EN;
-		ret = adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_VID_ADJ, temp);
-		ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_SATURATION, ctrl->val);
+		reg_value = ctrl->value + 128;
+		ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_sdp_addr,
+					SDP_REG_SATURATION_U, reg_value);
+		ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_sdp_addr,
+					SDP_REG_SATURATION_V, reg_value);
 		break;
 	case V4L2_CID_HUE:
-		temp = adv7481_rd_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_VID_ADJ);
-		temp |= CP_CTR_VID_ADJ_EN;
-		ret = adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_VID_ADJ, temp);
-		ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-					CP_REG_HUE, ctrl->val);
+		reg_value = 256 - ctrl->value;
+		if (reg_value >= 256)
+			reg_value -= 256;
+		ret |= adv7481_wr_byte(&state->i2c_client,
+				state->i2c_sdp_addr, SDP_REG_HUE, reg_value);
+		break;
+	case MSM_BA_PRIV_S_SATURATION_U:
+		reg_value = ctrl->value + 128;
+		ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_sdp_addr,
+				SDP_REG_SATURATION_U, reg_value);
+		break;
+	case MSM_BA_PRIV_S_SATURATION_V:
+		reg_value = ctrl->value + 128;
+		ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_sdp_addr,
+				SDP_REG_SATURATION_V, reg_value);
 		break;
 	default:
 		break;
 	}
+	return ret;
+}
+
+static int adv7481_s_ctrl (struct v4l2_ctrl *ctrl)
+{
+	int ret = 0;
 	return ret;
 }
 
@@ -2487,6 +2510,7 @@ static const struct v4l2_subdev_video_ops adv7481_video_ops = {
 static const struct v4l2_subdev_core_ops adv7481_core_ops = {
 	.s_power = adv7481_s_power,
 	.ioctl = adv7481_ioctl,
+	.s_ctrl = adv7481_s_color_ctrl,
 };
 
 static const struct v4l2_subdev_pad_ops adv7481_pad_ops = {
@@ -2515,13 +2539,13 @@ static int adv7481_init_v4l2_controls(struct adv7481_state *state)
 	}
 
 	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7481_ctrl_ops,
-			  V4L2_CID_BRIGHTNESS, -128, 127, 1, 0);
+			V4L2_CID_BRIGHTNESS, -128, 127, 1, 0);
 	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7481_ctrl_ops,
-			  V4L2_CID_CONTRAST, 0, 255, 1, 128);
+			V4L2_CID_CONTRAST, 0, 255, 1, 128);
 	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7481_ctrl_ops,
-			  V4L2_CID_SATURATION, 0, 255, 1, 128);
+			V4L2_CID_SATURATION, 0, 255, 1, 128);
 	v4l2_ctrl_new_std(&state->ctrl_hdl, &adv7481_ctrl_ops,
-			  V4L2_CID_HUE, -127, 128, 1, 0);
+			V4L2_CID_HUE, -127, 128, 1, 0);
 
 	state->sd.ctrl_handler = &state->ctrl_hdl;
 	if (state->ctrl_hdl.error) {
@@ -2837,14 +2861,6 @@ static void adv7481_probe_delayed_work(struct work_struct *work)
 	/* Delay required following I2C reset and I2C transactions */
 	udelay(I2C_SW_RST_DELAY);
 
-	/* Register V4l2 Control Functions */
-	ret = adv7481_init_v4l2_controls(state);
-	if (ret) {
-		pr_err("%s: V4L2 Controls Initialisation Failed %d\n",
-			__func__, ret);
-		goto err;
-	}
-
 	/* Initialize SW Init Settings and I2C sub maps 7481 */
 	ret = adv7481_dev_init(state);
 	if (ret) {
@@ -2852,6 +2868,14 @@ static void adv7481_probe_delayed_work(struct work_struct *work)
 		pr_err("%s(%d): SW Initialisation Failed\n",
 			__func__, __LINE__);
 		goto err;
+	}
+
+	/* Register V4l2 Control Functions */
+	ret = adv7481_init_v4l2_controls(state);
+	if (ret) {
+		pr_err("%s: V4L2 Controls Initialisation Failed %d\n",
+			__func__, ret);
+		goto err_media_entity;
 	}
 
 	enable_irq(state->irq);
