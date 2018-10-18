@@ -42,6 +42,7 @@
 #include "msm_camera_io_util.h"
 #include "msm_camera_dt_util.h"
 #include "linux/hdmi.h"
+#include "soc/qcom/early_domain.h"
 
 #define DRIVER_NAME "adv7481"
 
@@ -56,10 +57,10 @@
 #define LOCK_MAX_SLEEP		6000
 #define LOCK_NUM_TRIES		200
 
-#define MAX_DEFAULT_WIDTH       1280
-#define MAX_DEFAULT_HEIGHT      720
-#define MAX_DEFAULT_FRAME_RATE  60
-#define MAX_DEFAULT_PIX_CLK_HZ  74240000
+#define MAX_DEFAULT_WIDTH		1280
+#define MAX_DEFAULT_HEIGHT		720
+#define MAX_DEFAULT_FRAME_RATE	60
+#define MAX_DEFAULT_PIX_CLK_HZ	74240000
 
 #define ONE_MHZ_TO_HZ			1000000
 #define I2C_BLOCK_WRITE_SIZE	1024
@@ -158,6 +159,9 @@ struct adv7481_state {
 
 	/* worker to handle interrupts */
 	struct delayed_work irq_delayed_work;
+
+	/* worker to handle delayed initialization for early camera */
+	struct delayed_work probe_delayed_work;
 };
 
 struct adv7481_hdmi_params {
@@ -288,6 +292,7 @@ static int get_lane_cnt(struct resolution_config *configs,
 			enum adv7481_resolution size, int w, int h);
 static int get_settle_cnt(struct resolution_config *configs,
 			enum adv7481_resolution size, int w, int h);
+static void adv7481_probe_delayed_work(struct work_struct *work);
 
 static inline struct v4l2_subdev *to_sd(struct v4l2_ctrl *ctrl)
 {
@@ -2529,7 +2534,7 @@ static struct msm_camera_i2c_fn_t msm_sensor_cci_func_tbl = {
 	.i2c_write_table_w_microdelay =
 		msm_camera_cci_i2c_write_table_w_microdelay,
 	.i2c_util = msm_sensor_cci_i2c_util,
-	.i2c_poll =  msm_camera_cci_i2c_poll,
+	.i2c_poll = msm_camera_cci_i2c_poll,
 };
 
 static int adv7481_cci_init(struct adv7481_state *state)
@@ -2545,14 +2550,14 @@ static int adv7481_cci_init(struct adv7481_state *state)
 			struct msm_camera_cci_client), GFP_KERNEL);
 	cci_client = state->i2c_client.cci_client;
 	if (!cci_client) {
-		ret = -ENOMEM;
-		goto err_cci_init;
+		pr_err("%s: cci_client is NULL\n", __func__);
+		return -ENOMEM;
 	}
 	cci_client->cci_subdev = msm_cci_get_subdev();
 	pr_debug("%s cci_subdev: %p\n", __func__, cci_client->cci_subdev);
 	if (!cci_client->cci_subdev) {
-		ret = -EPROBE_DEFER;
-		goto err_cci_init;
+		pr_err("%s: cci_subdev is NULL\n", __func__);
+		return -EINVAL;
 	}
 	cci_client->cci_i2c_master = state->cci_master;
 	cci_client->sid = state->i2c_slave_addr;
@@ -2569,7 +2574,6 @@ static int adv7481_cci_init(struct adv7481_state *state)
 	pr_debug("%s i2c_client.client: %p\n", __func__,
 		state->i2c_client.client);
 
-err_cci_init:
 	return ret;
 }
 
@@ -2680,6 +2684,7 @@ static int adv7481_probe(struct platform_device *pdev)
 	state = devm_kzalloc(&pdev->dev,
 			sizeof(struct adv7481_state), GFP_KERNEL);
 	if (state == NULL) {
+		pr_err("%s: adv7481_state memory allocation failed\n", __func__);
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -2693,41 +2698,13 @@ static int adv7481_probe(struct platform_device *pdev)
 		goto err_mem_free;
 	}
 
-	ret = adv7481_cci_init(state);
-	if (ret < 0) {
-		pr_err("%s: failed adv7481_cci_init ret %d\n", __func__, ret);
-		goto err_mem_free;
-	}
-
-	/* config VREG */
-	ret = msm_camera_get_dt_vreg_data(pdev->dev.of_node,
-			&(state->cci_vreg), &(state->regulator_count));
-	if (ret < 0) {
-		pr_err("%s:cci get_dt_vreg failed\n", __func__);
-		goto err_mem_free;
-	}
-
-	ret = msm_camera_config_vreg(&pdev->dev, state->cci_vreg,
-			state->regulator_count, NULL, 0,
-			&state->cci_reg_ptr[0], 1);
-	if (ret < 0) {
-		pr_err("%s:cci config_vreg failed\n", __func__);
-		goto err_mem_free;
-	}
-
-	ret = msm_camera_enable_vreg(&pdev->dev, state->cci_vreg,
-			state->regulator_count, NULL, 0,
-			&state->cci_reg_ptr[0], 1);
-	if (ret < 0) {
-		pr_err("%s:cci enable_vreg failed\n", __func__);
-		goto err_mem_free;
-	}
-	pr_debug("%s - VREG Initialized...\n", __func__);
+	/* Initial ADV7481 State Settings */
+	state->tx_auto_params = ADV7481_AUTO_PARAMS;
 
 	/* Configure and Register V4L2 Sub-device */
 	sd = &state->sd;
 	v4l2_subdev_init(sd, &adv7481_ops);
-	sd->owner = pdev->dev.driver->owner;
+	sd->owner = state->dev->driver->owner;
 	v4l2_set_subdevdata(sd, state);
 	strlcpy(sd->name, DRIVER_NAME, sizeof(sd->name));
 	state->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
@@ -2744,12 +2721,87 @@ static int adv7481_probe(struct platform_device *pdev)
 		goto err_media_entity;
 	}
 
+	/* BA registration */
+	ret = msm_ba_register_subdev_node(sd);
+	if (ret) {
+		ret = -EIO;
+		pr_err("%s: msm_ba_register_subdev_node failed\n", __func__);
+		goto err_media_entity;
+	}
+
+	INIT_DELAYED_WORK(&state->probe_delayed_work,
+			adv7481_probe_delayed_work);
+	schedule_delayed_work(&state->probe_delayed_work,
+				msecs_to_jiffies(0));
+
+	pr_info("ADV7481 Probe successful!\n");
+
+	return ret;
+
+err_media_entity:
+	media_entity_cleanup(&sd->entity);
+
+err_mem_free:
+	devm_kfree(&pdev->dev, state);
+
+err:
+	return ret;
+}
+
+static void adv7481_probe_delayed_work(struct work_struct *work)
+{
+	int ret = 0;
+	struct v4l2_subdev *sd;
+	struct adv7481_state *state;
+
+	pr_info("ADV7481 Probe delayed work enter!\n");
+	while (get_early_service_status(EARLY_CAMERA)) {
+		pr_info("Waiting for signal from LK...");
+		msleep(500);
+	}
+
+	state = container_of(work, struct adv7481_state,
+				probe_delayed_work.work);
+
+	sd = &state->sd;
+
+	ret = adv7481_cci_init(state);
+	if (ret < 0) {
+		pr_err("%s: failed adv7481_cci_init ret %d\n", __func__, ret);
+		goto err;
+	}
+
+	/* config VREG */
+	ret = msm_camera_get_dt_vreg_data(state->dev->of_node,
+			&(state->cci_vreg), &(state->regulator_count));
+	if (ret < 0) {
+		pr_err("%s:cci get_dt_vreg failed\n", __func__);
+		goto err;
+	}
+
+	ret = msm_camera_config_vreg(state->dev, state->cci_vreg,
+			state->regulator_count, NULL, 0,
+			&state->cci_reg_ptr[0], 1);
+	if (ret < 0) {
+		pr_err("%s:cci config_vreg failed\n", __func__);
+		goto err;
+	}
+
+	ret = msm_camera_enable_vreg(state->dev, state->cci_vreg,
+			state->regulator_count, NULL, 0,
+			&state->cci_reg_ptr[0], 1);
+	if (ret < 0) {
+		pr_err("%s:cci enable_vreg failed\n", __func__);
+		goto err;
+	}
+	pr_debug("%s - VREG Initialized...\n", __func__);
+
 	/* Initialize HW Config */
 	ret = adv7481_hw_init(state);
 	if (ret) {
 		ret = -EIO;
 		pr_err("%s: HW Initialisation Failed\n", __func__);
-		goto err_media_entity;
+		goto err;
 	}
 
 	/* Soft reset */
@@ -2757,7 +2809,7 @@ static int adv7481_probe(struct platform_device *pdev)
 		IO_REG_MAIN_RST_ADDR, IO_REG_MAIN_RST_VALUE);
 	if (ret) {
 		pr_err("%s: Failed Soft reset %d\n", __func__, ret);
-		goto err_media_entity;
+		goto err;
 	}
 	/* Delay required following I2C reset and I2C transactions */
 	udelay(I2C_SW_RST_DELAY);
@@ -2767,11 +2819,8 @@ static int adv7481_probe(struct platform_device *pdev)
 	if (ret) {
 		pr_err("%s: V4L2 Controls Initialisation Failed %d\n",
 			__func__, ret);
-		goto err_media_entity;
+		goto err;
 	}
-
-	/* Initial ADV7481 State Settings */
-	state->tx_auto_params = ADV7481_AUTO_PARAMS;
 
 	/* Initialize SW Init Settings and I2C sub maps 7481 */
 	ret = adv7481_dev_init(state);
@@ -2779,30 +2828,18 @@ static int adv7481_probe(struct platform_device *pdev)
 		ret = -EIO;
 		pr_err("%s(%d): SW Initialisation Failed\n",
 			__func__, __LINE__);
-		goto err_media_entity;
+		goto err;
 	}
 
-	/* BA registration */
-	ret = msm_ba_register_subdev_node(sd);
-	if (ret) {
-		ret = -EIO;
-		pr_err("%s: BA init failed\n", __func__);
-		goto err_media_entity;
-	}
 	enable_irq(state->irq);
-	pr_info("ADV7481 Probe successful!\n");
+	pr_info("ADV7481 Probe delayed work done!\n");
 
-	return ret;
-
-err_media_entity:
-	media_entity_cleanup(&sd->entity);
-
-err_mem_free:
-	adv7481_release_cci_clks(state);
-	devm_kfree(&pdev->dev, state);
+	return;
 
 err:
-	return ret;
+	media_entity_cleanup(&sd->entity);
+	adv7481_release_cci_clks(state);
+	return;
 }
 
 static int adv7481_remove(struct platform_device *pdev)
