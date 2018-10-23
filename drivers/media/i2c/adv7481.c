@@ -2875,7 +2875,7 @@ static void adv7481_probe_delayed_work(struct work_struct *work)
 	if (ret) {
 		pr_err("%s: V4L2 Controls Initialisation Failed %d\n",
 			__func__, ret);
-		goto err_media_entity;
+		goto err;
 	}
 
 	enable_irq(state->irq);
