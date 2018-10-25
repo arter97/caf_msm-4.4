@@ -209,6 +209,7 @@ static int __init amba_init(void)
 
 postcore_initcall(amba_init);
 
+#ifndef CONFIG_MSM_GVM_QUIN
 static int amba_get_enable_pclk(struct amba_device *pcdev)
 {
 	int ret;
@@ -229,6 +230,17 @@ static void amba_put_disable_pclk(struct amba_device *pcdev)
 	clk_disable_unprepare(pcdev->pclk);
 	clk_put(pcdev->pclk);
 }
+
+#else
+static int amba_get_enable_pclk(struct amba_device *pcdev)
+{
+	return 0;
+}
+
+static void amba_put_disable_pclk(struct amba_device *pcdev)
+{
+}
+#endif
 
 /*
  * These are the device model conversion veneers; they convert the

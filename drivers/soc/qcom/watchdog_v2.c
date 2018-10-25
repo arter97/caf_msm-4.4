@@ -31,6 +31,9 @@
 #include <soc/qcom/memory_dump.h>
 #include <soc/qcom/minidump.h>
 #include <soc/qcom/watchdog.h>
+#ifdef CONFIG_MSM_GVM_QUIN
+#include <linux/reboot.h>
+#endif
 
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
@@ -472,6 +475,18 @@ void msm_trigger_wdog_bite(void)
 	if (!wdog_data)
 		return;
 	pr_info("Causing a watchdog bite!");
+
+#ifdef CONFIG_MSM_GVM_QUIN
+
+       __raw_writel(1*WDT_HZ, wdog_data->base + WDT0_BARK_TIME);
+       __raw_writel(1*WDT_HZ, wdog_data->base + WDT0_BITE_TIME);
+       __raw_writel(1, wdog_data->base + WDT0_RST);
+       /* Make sure register write is complete before proceeding */
+       mb();
+       mdelay(5000);
+       emergency_restart();
+#else
+
 	__raw_writel(1, wdog_data->base + WDT0_BITE_TIME);
 	mb();
 	__raw_writel(1, wdog_data->base + WDT0_RST);
@@ -483,6 +498,7 @@ void msm_trigger_wdog_bite(void)
 		__raw_readl(wdog_data->base + WDT0_EN),
 		__raw_readl(wdog_data->base + WDT0_BARK_TIME),
 		__raw_readl(wdog_data->base + WDT0_BITE_TIME));
+#endif
 }
 
 static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
