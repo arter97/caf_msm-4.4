@@ -1543,6 +1543,10 @@ static int pl011_hwinit(struct uart_port *port)
 	if (retval)
 		return retval;
 
+#ifdef CONFIG_MSM_GVM_QUIN
+	clk_set_rate(uap->clk, 24000000);
+#endif
+
 	uap->port.uartclk = clk_get_rate(uap->clk);
 
 	/* Clear pending error and receive interrupts */

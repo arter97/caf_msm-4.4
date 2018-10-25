@@ -207,6 +207,10 @@ efi_header_end:
 	__INIT
 
 ENTRY(stext)
+	ldr	x21, =0x004a3000                // read mpm timer
+	ldr	x22, [x21]
+	ldr	x21, =0x0066bf6b8               // store the mpm timer value to shared memory
+	str	x22, [x21]
 	bl	preserve_boot_args
 	bl	el2_setup			// Drop to EL1, w20=cpu_boot_mode
 	adrp	x24, __PHYS_OFFSET

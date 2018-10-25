@@ -481,7 +481,11 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 #ifdef CONFIG_PM
 static int gic_set_wake(struct irq_data *d, unsigned int on)
 {
+#ifndef CONFIG_MSM_GVM_QUIN
 	int ret = -ENXIO;
+#else
+	int ret = 0;
+#endif
 	unsigned int reg_offset, bit_offset;
 	unsigned int gicirq = gic_irq(d);
 	struct gic_chip_data *gic_data = irq_data_get_irq_chip_data(d);
@@ -584,9 +588,14 @@ static struct irq_chip gic_chip = {
 	.irq_set_wake		= gic_set_wake,
 	.irq_get_irqchip_state	= gic_irq_get_irqchip_state,
 	.irq_set_irqchip_state	= gic_irq_set_irqchip_state,
+#ifdef CONFIG_MSM_GVM_QUIN
+	.flags			= IRQCHIP_SET_TYPE_MASKED |
+				  IRQCHIP_MASK_ON_SUSPEND,
+#else
 	.flags			= IRQCHIP_SET_TYPE_MASKED |
 				  IRQCHIP_SKIP_SET_WAKE |
 				  IRQCHIP_MASK_ON_SUSPEND,
+#endif
 };
 
 static struct irq_chip gic_eoimode1_chip = {
