@@ -2727,6 +2727,7 @@ static int adv7481_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto err;
 	}
+
 	platform_set_drvdata(pdev, state);
 	state->dev = &pdev->dev;
 
@@ -2734,6 +2735,12 @@ static int adv7481_probe(struct platform_device *pdev)
 	ret = adv7481_parse_dt(pdev, state);
 	if (ret < 0) {
 		pr_err("Error parsing dt tree\n");
+		goto err_mem_free;
+	}
+
+	ret = adv7481_cci_init(state);
+	if (ret < 0) {
+		pr_err("%s: failed adv7481_cci_init ret %d\n", __func__, ret);
 		goto err_mem_free;
 	}
 
@@ -2811,12 +2818,6 @@ static void adv7481_probe_delayed_work(struct work_struct *work)
 
 	state = container_of(work, struct adv7481_state,
 				probe_delayed_work.work);
-
-	ret = adv7481_cci_init(state);
-	if (ret < 0) {
-		pr_err("%s: failed adv7481_cci_init ret %d\n", __func__, ret);
-		goto err;
-	}
 
 	/* config VREG */
 	ret = msm_camera_get_dt_vreg_data(state->dev->of_node,
