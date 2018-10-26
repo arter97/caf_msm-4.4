@@ -2811,6 +2811,8 @@ static void adv7481_probe_delayed_work(struct work_struct *work)
 
 	state = container_of(work, struct adv7481_state,
 				probe_delayed_work.work);
+        sd = &state->sd;
+
 
 	ret = adv7481_cci_init(state);
 	if (ret < 0) {
