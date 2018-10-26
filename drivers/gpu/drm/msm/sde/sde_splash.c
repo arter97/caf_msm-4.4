@@ -501,7 +501,8 @@ static inline u32 _sde_splash_parse_sspp_id(struct sde_mdss_cfg *cfg,
 	return 0;
 }
 
-int sde_splash_parse_reserved_plane_dt(struct sde_splash_info *splash_info,
+int sde_splash_parse_reserved_plane_dt(struct drm_device *dev,
+				struct sde_splash_info *splash_info,
 				struct sde_mdss_cfg *cfg)
 {
 	struct device_node *parent, *node;
@@ -512,7 +513,8 @@ int sde_splash_parse_reserved_plane_dt(struct sde_splash_info *splash_info,
 	if (!splash_info || !cfg)
 		return -EINVAL;
 
-	parent = of_find_node_by_path("/qcom,sde-reserved-plane");
+	parent = of_get_child_by_name(dev->dev->of_node,
+			"qcom,sde-reserved-plane");
 	if (!parent)
 		return -EINVAL;
 
@@ -758,6 +760,7 @@ bool sde_splash_get_lk_complete_status(struct msm_kms *kms)
 
 	if (sde_kms->splash_info.handoff &&
 		!sde_kms->splash_info.display_splash_enabled &&
+		!sde_kms->splash_info.early_display_enabled &&
 		SDE_LK_EXIT_VALUE == SDE_REG_READ(&intr->hw,
 					SCRATCH_REGISTER_1)) {
 		SDE_DEBUG("LK totoally exits\n");
@@ -939,21 +942,15 @@ int sde_splash_lk_stop_splash(struct msm_kms *kms,
 
 	sinfo = &sde_kms->splash_info;
 
-	if (!sinfo) {
-		SDE_ERROR("%s(%d): invalid splash info\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-
 	/* Monitor LK's status and tell it to exit. */
 	mutex_lock(&sde_splash_lock);
 	if (_sde_splash_validate_commit(sde_kms, state) &&
 			sinfo->display_splash_enabled) {
-		if (_sde_splash_lk_check(sde_kms->hw_intr))
+		if (_sde_splash_lk_check(sde_kms->hw_intr)) {
 			_sde_splash_notify_lk_stop_splash(sde_kms->hw_intr);
-
+			error = _sde_splash_clear_mixer_blendstage(kms, state);
+		}
 		sinfo->display_splash_enabled = false;
-
-		error = _sde_splash_clear_mixer_blendstage(kms, state);
 	}
 	mutex_unlock(&sde_splash_lock);
 
