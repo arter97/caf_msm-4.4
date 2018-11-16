@@ -33,6 +33,16 @@ struct dsi_bridge {
 };
 
 /**
+ * dsi_display_set_top_ctl - callback to set display topology property
+ * @connector: Pointer to drm connector structure
+ * @adj_mode: adjusted mode
+ * @display: Pointer to private display handle
+ * Returns: Zero on success
+ */
+int dsi_display_set_top_ctl(struct drm_connector *connector,
+			struct drm_display_mode *adj_mode, void *display);
+
+/**
  * dsi_conn_post_init - callback to perform additional initialization steps
  * @connector: Pointer to drm connector structure
  * @info: Pointer to sde connector info structure
