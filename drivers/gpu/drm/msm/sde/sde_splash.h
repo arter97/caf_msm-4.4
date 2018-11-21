@@ -43,6 +43,7 @@ struct sde_res_data {
 	u8 lm_cnt;
 };
 
+
 struct sde_splash_info {
 	/* handoff flag */
 	bool handoff;
@@ -53,8 +54,15 @@ struct sde_splash_info {
 	/* flag of display splash status */
 	bool display_splash_enabled;
 
+
 	/* to indicate LK is totally exited */
 	bool lk_is_exited;
+
+	/* flag of early display status */
+	bool early_display_enabled;
+
+	/* flag of early RVC status */
+	bool early_camera_enabled;
 
 	/* memory node used for display buffer */
 	uint32_t splash_mem_num;
@@ -146,8 +154,9 @@ int sde_splash_parse_memory_dt(struct drm_device *dev);
  *
  * Parse reserved plane information from DT for early RVC case.
  */
-int sde_splash_parse_reserved_plane_dt(struct sde_splash_info *splash_info,
-					struct sde_mdss_cfg *cfg);
+int sde_splash_parse_reserved_plane_dt(struct drm_device *dev,
+				struct sde_splash_info *splash_info,
+				struct sde_mdss_cfg *cfg);
 
 /*
  * sde_splash_query_plane_is_reserved
