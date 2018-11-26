@@ -65,20 +65,8 @@ static void _create_boot_marker(const char *name,
 
 static void set_bootloader_stats(void)
 {
-	_create_boot_marker("M - APPSBL Start - ",
-		readl_relaxed(&boot_stats->bootloader_start));
-	_create_boot_marker("M - APPSBL Display Init - ",
+	_create_boot_marker("M - Kernel Start  - ",
 		readl_relaxed(&boot_stats->bootloader_display));
-	_create_boot_marker("M - APPSBL Early-Domain Start - ",
-		readl_relaxed(&boot_stats->bootloader_early_domain_start));
-	_create_boot_marker("M - APPSBL Early-Camera Start - ",
-		readl_relaxed(&boot_stats->bootloader_early_camera_start));
-	_create_boot_marker("D - APPSBL Kernel Load Time - ",
-		readl_relaxed(&boot_stats->bootloader_load_kernel));
-	_create_boot_marker("D - APPSBL Kernel Auth Time - ",
-		readl_relaxed(&boot_stats->bootloader_checksum));
-	_create_boot_marker("M - APPSBL End - ",
-		readl_relaxed(&boot_stats->bootloader_end));
 }
 
 void place_marker(const char *name)

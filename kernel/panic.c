@@ -26,6 +26,10 @@
 #include <linux/console.h>
 #include <soc/qcom/minidump.h>
 
+#ifdef CONFIG_MSM_GVM_QUIN
+#include <soc/qcom/watchdog.h>
+#endif
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/exception.h>
 
@@ -46,6 +50,7 @@ EXPORT_SYMBOL_GPL(panic_timeout);
 ATOMIC_NOTIFIER_HEAD(panic_notifier_list);
 
 EXPORT_SYMBOL(panic_notifier_list);
+
 
 static long no_blink(int state)
 {
@@ -187,6 +192,10 @@ void panic(const char *fmt, ...)
 	}
 
 	trace_kernel_panic_late(0);
+
+#ifdef CONFIG_MSM_GVM_QUIN
+       msm_trigger_wdog_bite();
+#endif
 
 	if (panic_timeout != 0) {
 		/*
