@@ -626,9 +626,9 @@ static void _sde_hdmi_bridge_enable(struct drm_bridge *bridge)
 static void _sde_hdmi_bridge_disable(struct drm_bridge *bridge)
 {
 	struct sde_hdmi_bridge *sde_hdmi_bridge = to_hdmi_bridge(bridge);
+	struct sde_hdmi *display = sde_hdmi_bridge->display;
 	struct hdmi *hdmi = sde_hdmi_bridge->hdmi;
-	struct sde_connector *c_conn = to_sde_connector(hdmi->connector);
-	struct sde_hdmi *display = (struct sde_hdmi *)c_conn->display;
+	struct sde_connector_state *c_state = to_sde_connector_state(hdmi->connector->state);
 
 	mutex_lock(&display->display_lock);
 
@@ -636,6 +636,10 @@ static void _sde_hdmi_bridge_disable(struct drm_bridge *bridge)
 		SDE_ERROR("Invalid params\n");
 		mutex_unlock(&display->display_lock);
 		return;
+	}
+
+	if (c_state) {
+		c_state->hdr_ctrl.hdr_state = HDR_DISABLE;
 	}
 
 	display->pll_update_enable = false;
