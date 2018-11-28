@@ -257,8 +257,13 @@ static int setup_edrm_displays(struct sde_kms *master_kms,
 				break;
 			}
 		}
-		if (ret)
+		if (ret){
+			pr_err("Cannot find %s in main DRM\n", label);
+			if (dsi_mode)
+				kfree(dsi_mode);
 			return ret;
+		}
+		ret = -EINVAL;
 		for (i = 0; i < cfg->ctl_count; i++) {
 			reg_value = readl_relaxed(master_kms->mmio +
 				cfg->ctl[i].base + MMSS_MDP_CTL_TOP_OFFSET);
@@ -272,7 +277,15 @@ static int setup_edrm_displays(struct sde_kms *master_kms,
 				display->ctl_id = i + 1;
 				display->ctl_off = cfg->ctl[i].base;
 				display->lm_off = cfg->mixer[i].base;
+				ret = 0;
+				break;
 			}
+		}
+		if (ret){
+			pr_err("LK does not enable %s\n", label);
+			if (dsi_mode)
+				kfree(dsi_mode);
+			return -EINVAL;
 		}
 	} else if (!strcmp(type, "hdmi")) {
 		/* for HDMI interface, check main DRM's HDMI display list */
@@ -290,8 +303,11 @@ static int setup_edrm_displays(struct sde_kms *master_kms,
 				break;
 			}
 		}
-		if (ret)
+		if (ret){
+			pr_err("Cannot find %s in main DRM\n", label);
 			return ret;
+		}
+		ret = -EINVAL;
 		for (i = 0; i < cfg->ctl_count; i++) {
 			reg_value = readl_relaxed(master_kms->mmio +
 				cfg->ctl[i].base + MMSS_MDP_CTL_TOP_OFFSET);
@@ -302,7 +318,13 @@ static int setup_edrm_displays(struct sde_kms *master_kms,
 				display->ctl_id = i + 1;
 				display->ctl_off = cfg->ctl[i].base;
 				display->lm_off = cfg->mixer[i].base;
+				ret = 0;
+				break;
 			}
+		}
+		if (ret){
+			pr_err("No LK does not enable %s\n", label);
+			return -EINVAL;
 		}
 	}
 	return ret;
@@ -421,15 +443,23 @@ static int _edrm_kms_parse_dt(struct msm_edrm_kms *edrm_kms)
 fail:
 	for (i = 0; i < priv->num_planes; i++)
 		edrm_plane_destroy(priv->planes[i]);
+	priv->num_planes = 0;
 
 	for (i = 0; i < disp_cnt; i++) {
-		if (priv->crtcs[i])
+		if (priv->crtcs[i]) {
 			edrm_crtc_destroy(priv->crtcs[i]);
-		if (priv->encoders[i])
+			priv->num_crtcs--;
+		}
+		if (priv->encoders[i]) {
 			edrm_encoder_destroy(priv->encoders[i]);
-		if (priv->connectors[i])
+			priv->num_encoders--;
+		}
+		if (priv->connectors[i]){
 			edrm_connector_destroy(priv->connectors[i]);
+			priv->num_connectors--;
+		}
 	}
+	disp_cnt = 0;
 	edrm_kms->display_count = 0;
 	edrm_kms->plane_count = 0;
 	of_node_put(parent);
@@ -560,6 +590,7 @@ static int edrm_kms_hw_init(struct msm_kms *kms)
 	 */
 	if (lk_status == SPLASH_STATUS_NOT_START) {
 		rc = -EINVAL;
+		pr_err("LK does not start, eDRM cannot initialize\n");
 		goto power_error;
 	}
 
