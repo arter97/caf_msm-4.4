@@ -20,6 +20,7 @@
 
 #include <drm/drm_crtc.h>
 #include <linux/debugfs.h>
+#include <soc/qcom/boot_stats.h>
 #include "msm_kms.h"
 #include "edrm_kms.h"
 #include "edrm_crtc.h"
@@ -34,6 +35,8 @@
 #include "sde_crtc.h"
 
 #define MMSS_MDP_CTL_TOP_OFFSET 0x14
+
+static bool first_commit = true;
 
 static void edrm_kms_prepare_commit(struct msm_kms *kms,
 		struct drm_atomic_state *state)
@@ -55,6 +58,12 @@ static void edrm_kms_prepare_commit(struct msm_kms *kms,
 			break;
 		}
 	}
+
+	if (valid_commit && first_commit) {
+		first_commit = false;
+		place_marker("eDRM display first valid commit");
+	}
+
 	sde_power_resource_enable(&master_priv->phandle,
 			master_kms->core_client, true);
 
@@ -507,6 +516,7 @@ static int edrm_kms_postinit(struct msm_kms *kms)
 	drm_for_each_crtc(crtc, dev)
 		edrm_crtc_postinit(crtc);
 
+	place_marker("eDRM driver init completed");
 	return 0;
 }
 
