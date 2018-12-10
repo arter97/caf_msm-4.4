@@ -87,7 +87,6 @@ hab_vchan_free(struct kref *ref)
 
 	/* the release vchan from ctx was done earlier in vchan close() */
 	hab_ctx_put(ctx); /* now ctx is not needed from this vchan's view */
-	vchan->ctx = NULL;
 
 	/* release vchan from pchan. no more msg for this vchan */
 	write_lock_bh(&pchan->vchans_lock);
@@ -174,7 +173,10 @@ void hab_vchan_stop(struct virtual_channel *vchan)
 	if (vchan) {
 		vchan->otherend_closed = 1;
 		wake_up(&vchan->rx_queue);
-		wake_up_interruptible(&vchan->ctx->exp_wq);
+		if (vchan->ctx)
+			wake_up_interruptible(&vchan->ctx->exp_wq);
+		else
+			pr_err("NULL ctx for vchan %x\n", vchan->id);
 	}
 }
 
@@ -202,6 +204,25 @@ static int hab_vchans_per_pchan_empty(struct physical_channel *pchan)
 
 	read_lock(&pchan->vchans_lock);
 	empty = list_empty(&pchan->vchannels);
+	if (!empty) {
+		struct virtual_channel *vchan;
+		int vcnt = pchan->vcnt;
+
+		list_for_each_entry(vchan, &pchan->vchannels, pnode) {
+			/* discount open-pending unpaired vchan */
+			if (!vchan->session_id)
+				vcnt--;
+			else
+				pr_err("vchan %pK %x rm %x sn %d rf %d clsd %d rm clsd %d\n",
+					vchan, vchan->id,
+					vchan->otherend_id,
+					vchan->session_id,
+					get_refcnt(vchan->refcount),
+					vchan->closed, vchan->otherend_closed);
+		}
+		if (!vcnt)
+			empty = 1;/* unpaired vchan can exist at init time */
+	}
 	read_unlock(&pchan->vchans_lock);
 
 	return empty;
@@ -222,6 +243,8 @@ static int hab_vchans_empty(int vmid)
 				if (!hab_vchans_per_pchan_empty(pchan)) {
 					empty = 0;
 					spin_unlock_bh(&hab_dev->pchan_lock);
+					pr_info("vmid %d %s's vchans are not closed\n",
+							vmid, pchan->name);
 					break;
 				}
 			}
@@ -241,7 +264,7 @@ void hab_vchans_empty_wait(int vmid)
 	pr_info("waiting for GVM%d's sockets closure\n", vmid);
 
 	while (!hab_vchans_empty(vmid))
-		schedule();
+		usleep_range(10000, 12000);
 
 	pr_info("all of GVM%d's sockets are closed\n", vmid);
 }
@@ -292,7 +315,9 @@ void hab_vchan_put(struct virtual_channel *vchan)
 int hab_vchan_query(struct uhab_context *ctx, int32_t vcid, uint64_t *ids,
 			   char *names, size_t name_size, uint32_t flags)
 {
-	struct virtual_channel *vchan = hab_get_vchan_fromvcid(vcid, ctx);
+	struct virtual_channel *vchan;
+
+	vchan = hab_get_vchan_fromvcid(vcid, ctx, 1);
 	if (!vchan)
 		return -EINVAL;
 
