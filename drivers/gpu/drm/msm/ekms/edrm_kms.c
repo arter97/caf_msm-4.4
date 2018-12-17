@@ -250,7 +250,7 @@ static int setup_edrm_displays(struct sde_kms *master_kms,
 				dsi_mode = kcalloc(mode_cnt, sizeof(*dsi_mode),
 					GFP_KERNEL);
 				if (!dsi_mode)
-					break;
+					return -ENOMEM;
 				dsi_display_get_modes(dsi_disp, dsi_mode,
 					&mode_cnt);
 
@@ -334,6 +334,23 @@ static int setup_edrm_displays(struct sde_kms *master_kms,
 	return ret;
 }
 
+static int _sspp_search(const char *p_name, struct sde_mdss_cfg *cfg,
+			u32 *sspp_offset, u32 *sspp_cfg_id, u32 *sspp_type)
+{
+	int i, ret;
+
+	ret = -1;
+	for (i = 0; i < cfg->sspp_count; i++)
+		if (!strcmp(cfg->sspp[i].name, p_name)) {
+			*sspp_offset = cfg->sspp[i].base;
+			*sspp_cfg_id = cfg->sspp[i].id;
+			*sspp_type = cfg->sspp[i].type;
+			ret = 0;
+			break;
+		}
+	return ret;
+}
+
 static int _edrm_kms_parse_dt(struct msm_edrm_kms *edrm_kms)
 {
 	struct sde_kms *master_kms;
@@ -341,7 +358,7 @@ static int _edrm_kms_parse_dt(struct msm_edrm_kms *edrm_kms)
 	struct msm_drm_private *priv;
 	struct sde_mdss_cfg *cfg;
 	struct device_node *parent, *node;
-	int i, j, ret, disp_cnt, plane_cnt;
+	int i, ret, disp_cnt, plane_cnt;
 	const char *clabel;
 	const char *ctype;
 	struct device_node *plane_node;
@@ -351,7 +368,7 @@ static int _edrm_kms_parse_dt(struct msm_edrm_kms *edrm_kms)
 	struct drm_connector *connector;
 	struct edrm_plane *edrm_plane;
 	const char *p_name;
-	u32 lm_stage;
+	u32 lm_stage, sspp_offset, sspp_cfg_id, sspp_type;
 
 	master_priv = edrm_kms->master_dev->dev_private;
 	master_kms = to_sde_kms(master_priv->kms);
@@ -379,31 +396,37 @@ static int _edrm_kms_parse_dt(struct msm_edrm_kms *edrm_kms)
 			if (!plane_node)
 				break;
 
+			of_property_read_string(plane_node, "qcom,plane-name",
+					&p_name);
+			of_property_read_u32(plane_node, "lm-stage",
+					&lm_stage);
+			if (_sspp_search(p_name, cfg, &sspp_offset,
+				&sspp_cfg_id, &sspp_type)) {
+				pr_err("Cannot find %s in main DRM\n",
+					p_name);
+				continue;
+			}
+
 			plane = edrm_plane_init(edrm_kms->dev,
-				edrm_kms->plane_id[disp_cnt]);
+					edrm_kms->plane_id[disp_cnt],
+					sspp_type);
 			if (IS_ERR(plane)) {
 				pr_err("edrm_plane_init failed\n");
 				ret = PTR_ERR(plane);
+				of_node_put(plane_node);
 				goto fail;
 			}
 			priv->planes[priv->num_planes] = plane;
 			edrm_plane = to_edrm_plane(plane);
-			of_property_read_string(plane_node, "qcom,plane-name",
-				&p_name);
-			of_property_read_u32(plane_node, "lm-stage",
-				&lm_stage);
 			edrm_plane->display_id = disp_cnt;
 			edrm_plane->lm_stage = lm_stage;
-			for (j = 0; j < cfg->sspp_count; j++)
-				if (!strcmp(cfg->sspp[j].name, p_name)) {
-					edrm_plane->sspp_offset =
-						cfg->sspp[j].base;
-					edrm_plane->sspp_cfg_id =
-						cfg->sspp[j].id;
-				}
+			edrm_plane->sspp_offset = sspp_offset;
+			edrm_plane->sspp_cfg_id = sspp_cfg_id;
+			edrm_plane->sspp_type = sspp_type;
 			plane->possible_crtcs = (1 << disp_cnt);
 			priv->num_planes++;
 			plane_cnt++;
+			of_node_put(plane_node);
 		} while (plane_node);
 
 		edrm_kms->display[disp_cnt].plane_cnt = plane_cnt;
