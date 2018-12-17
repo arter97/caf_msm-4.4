@@ -146,7 +146,7 @@ struct sde_hw_ctl_ops {
 	/**
 	 * Set all blend stages to disabled
 	 * @ctx       : ctl path ctx pointer
-	 * @handoff   : handoff flag
+	 * @handoff   : indicate if lk is prepare for handoff
 	 * @resv_pipes  : reserved pipes in DT
 	 * @resv_pipes_length:    array size of array reserved_pipes
 	 */
@@ -158,7 +158,7 @@ struct sde_hw_ctl_ops {
 	 * @ctx       : ctl path ctx pointer
 	 * @lm        : layer mixer enumeration
 	 * @cfg       : blend stage configuration
-	 * @handoff   : handoff flag
+	 * @handoff   : indicate if lk is prepare for handoff
 	 * @resv_pipes  : reserved pipes in DT
 	 * @resv_pipes_length:   array size of array reserved_pipes
 	 */
