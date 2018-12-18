@@ -27,12 +27,6 @@ hab_msg_alloc(struct physical_channel *pchan, size_t sizebytes)
 {
 	struct hab_message *message;
 
-	if (sizebytes > HAB_HEADER_SIZE_MASK) {
-		pr_err("pchan %s send size too large %zd\n",
-			pchan->name, sizebytes);
-		return NULL;
-	}
-
 	message = kzalloc(sizeof(*message) + sizebytes, GFP_ATOMIC);
 	if (!message)
 		return NULL;
@@ -159,12 +153,6 @@ static int hab_receive_create_export_ack(struct physical_channel *pchan,
 		pr_err("exp ack size %zu is not as arrived %zu\n",
 				  sizeof(ack_recvd->ack), sizebytes);
 
-	if (sizebytes > HAB_HEADER_SIZE_MASK) {
-		pr_err("pchan %s read size too large %zd\n",
-			pchan->name, sizebytes);
-		return -EINVAL;
-	}
-
 	if (physical_channel_read(pchan,
 		&ack_recvd->ack,
 		sizebytes) != sizebytes)
@@ -180,11 +168,6 @@ static int hab_receive_create_export_ack(struct physical_channel *pchan,
 static void hab_msg_drop(struct physical_channel *pchan, size_t sizebytes)
 {
 	uint8_t *data = NULL;
-
-	if (sizebytes > HAB_HEADER_SIZE_MASK) {
-		pr_err("%s read size too large %zd\n", pchan->name, sizebytes);
-		return;
-	}
 
 	data = kmalloc(sizebytes, GFP_ATOMIC);
 	if (data == NULL)
@@ -295,12 +278,6 @@ int hab_msg_recv(struct physical_channel *pchan,
 		break;
 
 	case HAB_PAYLOAD_TYPE_EXPORT:
-		if (sizebytes > HAB_HEADER_SIZE_MASK) {
-			pr_err("%s exp size too large %zd\n",
-					pchan->name, sizebytes);
-			break;
-		}
-
 		exp_desc = kzalloc(sizebytes, GFP_ATOMIC);
 		if (!exp_desc)
 			break;

@@ -498,7 +498,7 @@ struct virtual_channel *hab_vchan_get(struct physical_channel *pchan,
 void hab_vchan_put(struct virtual_channel *vchan);
 
 struct virtual_channel *hab_get_vchan_fromvcid(int32_t vcid,
-		struct uhab_context *ctx, int ignore_remote);
+		struct uhab_context *ctx);
 struct physical_channel *hab_pchan_alloc(struct hab_device *habdev,
 		int otherend_id);
 struct physical_channel *hab_pchan_find_domid(struct hab_device *dev,
