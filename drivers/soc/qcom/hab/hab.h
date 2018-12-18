@@ -45,7 +45,6 @@
 #include <linux/reboot.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
-#include <linux/delay.h>
 #include <soc/qcom/boot_stats.h>
 
 enum hab_payload_type {
@@ -86,9 +85,11 @@ enum hab_payload_type {
 #define DEVICE_DISP5_NAME "hab_disp5"
 #define DEVICE_GFX_NAME "hab_ogles"
 #define DEVICE_VID_NAME "hab_vid"
-#define DEVICE_VID2_NAME "hab_vid2"
 #define DEVICE_MISC_NAME "hab_misc"
 #define DEVICE_QCPE1_NAME "hab_qcpe_vm1"
+#define DEVICE_QCPE2_NAME "hab_qcpe_vm2"
+#define DEVICE_QCPE3_NAME "hab_qcpe_vm3"
+#define DEVICE_QCPE4_NAME "hab_qcpe_vm4"
 #define DEVICE_CLK1_NAME "hab_clock_vm1"
 #define DEVICE_CLK2_NAME "hab_clock_vm2"
 #define DEVICE_FDE1_NAME "hab_fde1"
@@ -350,8 +351,6 @@ struct hab_driver {
 };
 
 struct virtual_channel {
-	struct list_head node; /* for ctx */
-	struct list_head pnode; /* for pchan */
 	/*
 	 * refcount is used to track the references from hab core to the virtual
 	 * channel such as references from physical channels,
@@ -360,6 +359,8 @@ struct virtual_channel {
 	struct kref refcount;
 	struct physical_channel *pchan;
 	struct uhab_context *ctx;
+	struct list_head node; /* for ctx */
+	struct list_head pnode; /* for pchan */
 	struct list_head rx_list;
 	wait_queue_head_t rx_queue;
 	spinlock_t rx_lock;

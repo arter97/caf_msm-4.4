@@ -124,11 +124,7 @@ void habmem_remove_export(struct export_desc *exp)
 	struct uhab_context *ctx;
 
 	if (!exp || !exp->ctx || !exp->pchan) {
-		if (exp)
-			pr_err("invalid info in exp %pK ctx %pK pchan %pK\n",
-			   exp, exp->ctx, exp->pchan);
-		else
-			pr_err("invalid exp\n");
+		pr_err("failed to find valid info in exp %pK\n", exp);
 		return;
 	}
 
