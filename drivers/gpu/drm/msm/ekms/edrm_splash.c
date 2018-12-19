@@ -14,7 +14,7 @@
 #include <linux/of_address.h>
 #include <linux/debugfs.h>
 #include <linux/memblock.h>
-
+#include <soc/qcom/early_domain.h>
 #include "msm_drv.h"
 #include "sde_kms.h"
 #include "edrm_kms.h"
@@ -39,15 +39,7 @@
  */
 void edrm_splash_notify_lk_stop_splash(struct msm_kms *kms)
 {
-	struct msm_edrm_kms *edrm_kms = to_edrm_kms(kms);
-	struct msm_drm_private *master_priv =
-			edrm_kms->master_dev->dev_private;
-	struct sde_kms *master_kms;
-
-	master_kms = to_sde_kms(master_priv->kms);
-	/* write splash stop signal to scratch register*/
-	writel_relaxed(SDE_LK_STOP_VALUE, master_kms->mmio +
-			SCRATCH_REGISTER_1);
+	request_early_service_shutdown(EARLY_DISPLAY);
 }
 
 /**
@@ -58,18 +50,12 @@ void edrm_splash_notify_lk_stop_splash(struct msm_kms *kms)
 void edrm_splash_poll_lk_stop_splash(struct msm_kms *kms)
 {
 	int i = 0;
-	u32 reg_value = 0;
 	struct msm_edrm_kms *edrm_kms = to_edrm_kms(kms);
-	struct msm_drm_private *master_priv = edrm_kms->master_dev->dev_private;
-	struct sde_kms *master_kms;
 
-	master_kms = to_sde_kms(master_priv->kms);
 	/* each read may wait up to 10000us, worst case polling is 4 sec */
 	while (i < 400) {
 		/* read LK status from scratch register*/
-		reg_value = readl_relaxed(master_kms->mmio +
-				SCRATCH_REGISTER_1);
-		if (reg_value == SDE_EXIT_VALUE) {
+		if (!get_early_service_status(EARLY_DISPLAY)) {
 			edrm_kms->lk_running_flag = false;
 			break;
 		}
@@ -83,20 +69,10 @@ void edrm_splash_poll_lk_stop_splash(struct msm_kms *kms)
  */
 int edrm_splash_get_lk_status(struct msm_kms *kms)
 {
-	u32 reg_value = 0;
-	struct msm_edrm_kms *edrm_kms = to_edrm_kms(kms);
-	struct msm_drm_private *master_priv = edrm_kms->master_dev->dev_private;
-	struct sde_kms *master_kms;
-
-	master_kms = to_sde_kms(master_priv->kms);
-	reg_value = readl_relaxed(master_kms->mmio + SCRATCH_REGISTER_1);
-	switch (reg_value) {
-	case SDE_RUNNING_VALUE:
+	if (get_early_service_status(EARLY_DISPLAY))
 		return SPLASH_STATUS_RUNNING;
-	case SDE_EXIT_VALUE:
+	else
 		return SPLASH_STATUS_NOT_START;
-	}
-	return SPLASH_STATUS_NOT_START;
 }
 
 

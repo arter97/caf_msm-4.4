@@ -734,7 +734,7 @@ bool sde_splash_get_lk_complete_status(struct msm_kms *kms)
 		!sde_kms->splash_info.display_splash_enabled &&
 		!sde_kms->splash_info.early_display_enabled &&
 		!_sde_splash_lk_check()) {
-		SDE_DEBUG("LK totoally exits\n");
+		SDE_DEBUG("LK totally exits\n");
 		return true;
 	}
 
@@ -918,7 +918,8 @@ int sde_splash_lk_stop_splash(struct msm_kms *kms,
 			sinfo->display_splash_enabled) {
 		if (_sde_splash_lk_check()) {
 			_sde_splash_notify_lk_stop_splash();
-		error = _sde_splash_clear_mixer_blendstage(kms, state);
+			error = _sde_splash_clear_mixer_blendstage(kms, state);
+			sinfo->display_splash_enabled = false;
 		}
 	}
 	mutex_unlock(&sde_splash_lock);
