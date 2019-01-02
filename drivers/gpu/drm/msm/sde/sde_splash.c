@@ -919,8 +919,8 @@ int sde_splash_lk_stop_splash(struct msm_kms *kms,
 		if (_sde_splash_lk_check()) {
 			_sde_splash_notify_lk_stop_splash();
 			error = _sde_splash_clear_mixer_blendstage(kms, state);
-			sinfo->display_splash_enabled = false;
 		}
+		sinfo->display_splash_enabled = false;
 	}
 	mutex_unlock(&sde_splash_lock);
 
