@@ -1609,8 +1609,8 @@
 
 / {
 	reserved-memory {
-		lk_mem: lk_pool@0x91600000 {
-			reg = <0 0x91600000 0 0x00600000>;
+		lk_mem: lk_pool@0x91D00000 {
+			reg = <0 0x91D00000 0 0x00400000>;
 			label = "lk_pool";
 		};
 
