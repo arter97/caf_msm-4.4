@@ -45,6 +45,34 @@ Subnode properties:
 				reserved plane like:
 				qcom,assigned_plane = <&reserved_plane1>;
 
+- qcom,mode-x-offset : optional parameter.  If this is defined in dtsi,
+						The display will not use full active region of
+						the display mode.  This parameter define the
+						horizontal offset from the left.  If this field
+						is not defined, the default offset is zero which
+						is no offset.
+
+- qcom,mode-y-offset : optional parameter.  If this is defined in dtsi,
+						The display will not use full active region of
+						the display mode.  This parameter define the
+						vertical offset from the top.  If this field
+						is not defined, the default offset is zero which
+						is no offset.
+
+- qcom,mode-width :  optional parameter.  If this is defined in dtsi,
+						The display will not use full active region of
+						the display mode.  This parameter define the
+						width of the active region.  If this field is
+						not defined, the default width is same as the
+						active width of the display mode.
+
+- qcom,mode-height : optional parameter.  If this is defined in dtsi,
+						The display will not use full active region of
+						the display mode.  This parameter define the
+						width of the active region.  If this field is
+						not defined, the default width is same as the
+						active height of the display mode.
+
 Example:
 	msm_kms_edrm: qcom,msm_kms_edrm@900000 {
 		qcom,edrm-assigned-display {

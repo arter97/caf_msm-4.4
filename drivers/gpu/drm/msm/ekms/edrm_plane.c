@@ -14,6 +14,7 @@
 #include "edrm_crtc.h"
 #include "sde_kms.h"
 #include "edrm_kms.h"
+#include "edrm_splash.h"
 
 /* SDE_SSPP_SRC */
 #define SSPP_SRC_SIZE                      0x00
@@ -69,7 +70,8 @@
 #define PIPE_VP_0_QSEED2_SHARP_THRESHOLD_SMOOTH 0x238
 #define PIPE_VP_0_QSEED2_SHARP_THRESHOLD_NOISE 0x23C
 
-#define SSPP_SOLID_FILL_FORMAT             0x004237FF
+#define SSPP_RGB_SOLID_FILL_FORMAT         0x004237FF
+#define SSPP_YUV_SOLID_FILL_FORMAT         0x004236FF
 #define SSPP_ARGB8888_FORMAT               0x000237FF
 #define SSPP_XRGB8888_FORMAT               0x000236FF
 #define SSPP_ARGB1555_FORMAT               0x00023315
@@ -86,10 +88,6 @@
 #define SSPP_ABGR_PATTERN                  0x03010002
 #define SSPP_RGBA_PATTERN                  0x02000103
 #define SSPP_BGRA_PATTERN                  0x01000203
-
-#define LAYER_BLEND5_OP                    0x260
-#define LAYER_OP_ENABLE_ALPHA_BLEND        0x600
-#define LAYER_OP_DISABLE_ALPHA_BLEND       0x200
 
 static u32 edrm_plane_formats_RGB[] = {
 	DRM_FORMAT_ARGB8888,
@@ -219,13 +217,14 @@ static void edrm_plane_enable_csc(struct sde_kms *master_kms,
 }
 
 static void edrm_plane_set_yuv_plane(struct drm_plane *plane,
-	struct sde_kms *master_kms, u32 lm_off)
+	struct sde_kms *master_kms)
 {
 	u32 img_size, ystride0, ystride1;
 	u32 plane0_addr, plane1_addr, plane2_addr, plane3_addr;
 	struct edrm_plane *edrm_plane;
 
 	edrm_plane = to_edrm_plane(plane);
+	edrm_plane->yuv_plane = true;
 	edrm_plane_enable_csc(master_kms, edrm_plane->sspp_offset);
 	if ((plane->state->fb->pixel_format == DRM_FORMAT_NV12) ||
 		(plane->state->fb->pixel_format == DRM_FORMAT_NV21) ||
@@ -297,8 +296,10 @@ static void edrm_plane_set_yuv_plane(struct drm_plane *plane,
 		edrm_plane->sspp_offset + PIPE_SW_PIX_EXT_C0_LR);
 	writel_relaxed(0x00020001, master_kms->mmio +
 		edrm_plane->sspp_offset + PIPE_SW_PIX_EXT_C0_TB);
-	img_size = ((plane->state->fb->height + 3) << 16) |
-		(plane->state->fb->width + 3);
+
+	/* src_h and src_w are in 16.16 fixed format */
+	img_size = (((plane->state->src_h >> 16) + 3) << 16) |
+		((plane->state->src_w >> 16) + 3);
 	writel_relaxed(img_size, master_kms->mmio +
 		edrm_plane->sspp_offset + PIPE_SW_PIXEL_EXT_C0_REQ);
 
@@ -306,8 +307,8 @@ static void edrm_plane_set_yuv_plane(struct drm_plane *plane,
 		edrm_plane->sspp_offset + PIPE_SW_PIX_EXT_C1C2_LR);
 	writel_relaxed(0x00010000, master_kms->mmio +
 		edrm_plane->sspp_offset + PIPE_SW_PIX_EXT_C1C2_TB);
-	img_size = ((plane->state->fb->height/2 + 1) << 16) |
-		(plane->state->fb->width/2 + 1);
+	img_size = (((plane->state->src_h >> 16)/2 + 1) << 16) |
+		((plane->state->src_w >> 16)/2 + 1);
 	writel_relaxed(img_size, master_kms->mmio +
 		edrm_plane->sspp_offset + PIPE_SW_PIXEL_EXT_C1C2_REQ);
 
@@ -315,35 +316,33 @@ static void edrm_plane_set_yuv_plane(struct drm_plane *plane,
 		edrm_plane->sspp_offset + PIPE_SW_PIX_EXT_C3_LR);
 	writel_relaxed(0x00010000, master_kms->mmio +
 		edrm_plane->sspp_offset + PIPE_SW_PIX_EXT_C3_TB);
-	img_size = ((plane->state->fb->height + 1) << 16) |
-		(plane->state->fb->width + 1);
+	img_size = (((plane->state->src_h >> 16) + 1) << 16) |
+		((plane->state->src_w >> 16) + 1);
 	writel_relaxed(img_size, master_kms->mmio +
 		edrm_plane->sspp_offset + PIPE_SW_PIXEL_EXT_C3_REQ);
 
 
 	/* do a solid fill of transparent color */
-	writel_relaxed(0xFF000000, master_kms->mmio +
+	writel_relaxed(0xFFFFFFFF, master_kms->mmio +
 		edrm_plane->sspp_offset + SSPP_CONSTANT_COLOR);
-
-	/* setup blending for mixer stage 5 */
-	writel_relaxed(LAYER_OP_DISABLE_ALPHA_BLEND, master_kms->mmio + lm_off
-		+ LAYER_BLEND5_OP);
 }
 
 static void edrm_plane_set_rgb_plane(struct drm_plane *plane,
-	struct sde_kms *master_kms, u32 lm_off)
+	struct sde_kms *master_kms)
 {
 	u32 img_size, ystride0, ystride1, plane_addr;
 	struct edrm_plane *edrm_plane;
 
 	edrm_plane = to_edrm_plane(plane);
-
+	edrm_plane->yuv_plane = false;
 	ystride0 = (plane->state->fb->width *
 		plane->state->fb->bits_per_pixel/8);
 	ystride1 = 0;
 	plane_addr = msm_framebuffer_iova(plane->state->fb,
 		edrm_plane->aspace, 0);
-	img_size = (plane->state->fb->height << 16) | plane->state->fb->width;
+
+	/* src_h and src_w are in 16.16 fixed format */
+	img_size = plane->state->src_h  | (plane->state->src_w >> 16);
 	writel_relaxed(plane_addr, master_kms->mmio +
 		edrm_plane->sspp_offset + SSPP_SRC0_ADDR);
 	writel_relaxed(ystride0, master_kms->mmio +
@@ -372,10 +371,6 @@ static void edrm_plane_set_rgb_plane(struct drm_plane *plane,
 	writel_relaxed(0x0, master_kms->mmio + edrm_plane->sspp_offset +
 			SSPP_CONSTANT_COLOR);
 
-	/* setup blending for mixer stage 5 */
-	writel_relaxed(LAYER_OP_ENABLE_ALPHA_BLEND, master_kms->mmio + lm_off
-		+ LAYER_BLEND5_OP);
-
 	/* disable CSC */
 	writel_relaxed(0x0, master_kms->mmio + edrm_plane->sspp_offset +
 		PIPE_OP_MODE);
@@ -393,7 +388,7 @@ static int edrm_plane_modeset(struct drm_plane *plane)
 	struct sde_kms *master_kms;
 	struct edrm_plane *edrm_plane;
 	bool yuv_format;
-	u32 img_size, src_xy, dst_xy, lm_off;
+	u32 img_size, src_xy, dst_xy;
 	struct msm_edrm_display *display;
 
 	edrm_kms = to_edrm_kms(kms);
@@ -401,7 +396,6 @@ static int edrm_plane_modeset(struct drm_plane *plane)
 	master_kms = to_sde_kms(master_priv->kms);
 	edrm_plane = to_edrm_plane(plane);
 	display = &edrm_kms->display[edrm_plane->display_id];
-	lm_off = display->lm_off;
 
 	switch (plane->state->fb->pixel_format) {
 	case DRM_FORMAT_ARGB8888:
@@ -554,7 +548,7 @@ static int edrm_plane_modeset(struct drm_plane *plane)
 	case DRM_FORMAT_ABGR4444:
 		writel_relaxed(SSPP_ARGB4444_FORMAT, master_kms->mmio +
 			edrm_plane->sspp_offset + SSPP_SRC_FORMAT);
-		writel_relaxed(SSPP_ARGB_PATTERN, master_kms->mmio +
+		writel_relaxed(SSPP_ABGR_PATTERN, master_kms->mmio +
 			edrm_plane->sspp_offset + SSPP_SRC_UNPACK_PATTERN);
 		yuv_format = false;
 		break;
@@ -677,13 +671,17 @@ static int edrm_plane_modeset(struct drm_plane *plane)
 	}
 
 	if (yuv_format)
-		edrm_plane_set_yuv_plane(plane, master_kms, lm_off);
+		edrm_plane_set_yuv_plane(plane, master_kms);
 	else
-		edrm_plane_set_rgb_plane(plane, master_kms, lm_off);
+		edrm_plane_set_rgb_plane(plane, master_kms);
 
-	img_size = (plane->state->fb->height << 16) | plane->state->fb->width;
-	src_xy = (plane->state->src_x << 16) | plane->state->src_y;
-	dst_xy = (plane->state->crtc_x << 16) | plane->state->crtc_y;
+	/* src_h, src_w, src_x, src_y are in 16.16 fixed format */
+	img_size = plane->state->src_h | (plane->state->src_w >> 16);
+	src_xy = plane->state->src_y | (plane->state->src_x >> 16);
+
+	/* for splitter setup - add display offset into plane state */
+	dst_xy = ((plane->state->crtc_y + display->y_offset) << 16) |
+			(plane->state->crtc_x + display->x_offset);
 
 	writel_relaxed(img_size, master_kms->mmio + edrm_plane->sspp_offset +
 		SSPP_SRC_SIZE);
@@ -706,15 +704,16 @@ void edrm_plane_destroy(struct drm_plane *plane)
 	kfree(edrm_plane);
 }
 
-int edrm_plane_flush(struct drm_plane *plane)
+int edrm_plane_flush(struct drm_plane *plane, struct drm_crtc *crtc)
 {
 	struct edrm_plane *edrm_plane = to_edrm_plane(plane);
-	struct edrm_crtc *edrm_crtc = to_edrm_crtc(plane->state->crtc);
+	struct edrm_crtc *edrm_crtc = to_edrm_crtc(crtc);
 	u32 sspp_flush_mask_bit[10] = {
 				0, 1, 2, 18, 3, 4, 5, 19, 11, 12};
 
 	edrm_crtc->sspp_flush_mask |=
 		BIT(sspp_flush_mask_bit[edrm_plane->sspp_cfg_id - 1]);
+
 	return 0;
 }
 
@@ -728,15 +727,6 @@ static int edrm_plane_atomic_check(struct drm_plane *plane,
 static void edrm_plane_atomic_update(struct drm_plane *plane,
 		struct drm_plane_state *state)
 {
-	if (!plane->state->crtc) {
-		pr_err("state crtc is null, skip pipe programming\n");
-		return;
-	}
-	if (!plane->state->fb) {
-		pr_err("state fb is null, skip pipe programming\n");
-		return;
-	}
-
 	if (edrm_plane_modeset(plane))
 		pr_err("Plane modeset failed\n");
 }
@@ -760,7 +750,7 @@ static void edrm_plane_atomic_disable(struct drm_plane *plane,
 	struct sde_kms *master_kms;
 	struct msm_edrm_display *display;
 	struct edrm_plane *edrm_plane;
-	u32 img_size, stride, lm_off;
+	u32 img_size, stride, dst_xy;
 
 	edrm_kms = to_edrm_kms(kms);
 	master_priv = edrm_kms->master_dev->dev_private;
@@ -770,7 +760,6 @@ static void edrm_plane_atomic_disable(struct drm_plane *plane,
 
 	edrm_plane = to_edrm_plane(plane);
 	display = &edrm_kms->display[edrm_plane->display_id];
-	lm_off = display->lm_off;
 
 	/* setup SSPP */
 	img_size = (display->mode.vdisplay << 16) | display->mode.hdisplay;
@@ -781,10 +770,14 @@ static void edrm_plane_atomic_disable(struct drm_plane *plane,
 		+ SSPP_SRC_XY);
 	writel_relaxed(img_size, master_kms->mmio + edrm_plane->sspp_offset +
 			SSPP_OUT_SIZE);
-	writel_relaxed(0, master_kms->mmio + edrm_plane->sspp_offset +
+	/* for splitter setup - add display offset into plane state */
+	dst_xy = (display->y_offset << 16) | display->x_offset;
+	writel_relaxed(dst_xy, master_kms->mmio + edrm_plane->sspp_offset +
 			SSPP_OUT_XY);
 	writel_relaxed(stride, master_kms->mmio + edrm_plane->sspp_offset +
 			SSPP_SRC_YSTRIDE0);
+	writel_relaxed(0x0, master_kms->mmio + edrm_plane->sspp_offset +
+			SSPP_SRC_YSTRIDE1);
 	writel_relaxed(0x0, master_kms->mmio + edrm_plane->sspp_offset +
 			PIPE_SW_PIX_EXT_C0_LR);
 	writel_relaxed(0x0, master_kms->mmio + edrm_plane->sspp_offset +
@@ -804,16 +797,23 @@ static void edrm_plane_atomic_disable(struct drm_plane *plane,
 	writel_relaxed(img_size, master_kms->mmio + edrm_plane->sspp_offset +
 			PIPE_SW_PIXEL_EXT_C3_REQ);
 
-	/* RGB format */
-	writel_relaxed(SSPP_SOLID_FILL_FORMAT, master_kms->mmio +
-		edrm_plane->sspp_offset + SSPP_SRC_FORMAT);
-	writel_relaxed(SSPP_ARGB_PATTERN, master_kms->mmio +
-		edrm_plane->sspp_offset + SSPP_SRC_UNPACK_PATTERN);
 	/* do a solid fill of transparent color */
-	writel_relaxed(0x0, master_kms->mmio + edrm_plane->sspp_offset +
-			SSPP_CONSTANT_COLOR);
-	writel_relaxed(LAYER_OP_ENABLE_ALPHA_BLEND, master_kms->mmio + lm_off
-		+ LAYER_BLEND5_OP);
+	if (edrm_plane->yuv_plane == true) {
+		writel_relaxed(SSPP_YUV_SOLID_FILL_FORMAT,
+			master_kms->mmio + edrm_plane->sspp_offset +
+			SSPP_SRC_FORMAT);
+		writel_relaxed(0x00030201, master_kms->mmio +
+			edrm_plane->sspp_offset + SSPP_SRC_UNPACK_PATTERN);
+		writel_relaxed(0xFFFFFFFF, master_kms->mmio +
+			edrm_plane->sspp_offset + SSPP_CONSTANT_COLOR);
+	} else {
+		writel_relaxed(SSPP_RGB_SOLID_FILL_FORMAT, master_kms->mmio +
+			edrm_plane->sspp_offset + SSPP_SRC_FORMAT);
+		writel_relaxed(SSPP_ARGB_PATTERN, master_kms->mmio +
+			edrm_plane->sspp_offset + SSPP_SRC_UNPACK_PATTERN);
+		writel_relaxed(0x0, master_kms->mmio + edrm_plane->sspp_offset
+			+ SSPP_CONSTANT_COLOR);
+	}
 
 	/* disable CSC */
 	writel_relaxed(0x0, master_kms->mmio + edrm_plane->sspp_offset +
