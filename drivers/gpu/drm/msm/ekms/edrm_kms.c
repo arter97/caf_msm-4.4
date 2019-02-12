@@ -373,6 +373,8 @@ static int _edrm_kms_parse_dt(struct msm_edrm_kms *edrm_kms)
 	struct edrm_plane *edrm_plane;
 	const char *p_name;
 	u32 lm_stage, sspp_offset, sspp_cfg_id, sspp_type;
+	u32 x_offset, y_offset, width, height;
+	u32 intf_width, intf_height;
 
 	master_priv = edrm_kms->master_dev->dev_private;
 	master_kms = to_sde_kms(master_priv->kms);
@@ -434,12 +436,51 @@ static int _edrm_kms_parse_dt(struct msm_edrm_kms *edrm_kms)
 		} while (plane_node);
 
 		edrm_kms->display[disp_cnt].plane_cnt = plane_cnt;
+
 		ret = setup_edrm_displays(master_kms,
 			&edrm_kms->display[disp_cnt], clabel, ctype);
 		if (ret)
 			goto fail;
 
+		ret = of_property_read_u32(node, "qcom,mode-x-offset",
+			&x_offset);
+		if (ret)
+			pr_debug("mode-x-offste not defined\n");
+		else
+			edrm_kms->display[disp_cnt].x_offset = x_offset;
+
+		ret = of_property_read_u32(node, "qcom,mode-y-offset",
+			&y_offset);
+		if (ret)
+			pr_debug("mode-y-offste not defined\n");
+		else
+			edrm_kms->display[disp_cnt].y_offset = y_offset;
+
+		/* Store the interface display mode width and height for
+		 * parameter check
+		 */
+		intf_width = edrm_kms->display[disp_cnt].mode.hdisplay;
+		intf_height = edrm_kms->display[disp_cnt].mode.vdisplay;
+		ret = of_property_read_u32(node, "qcom,mode-width", &width);
+		if (ret)
+			pr_err("Cannot read mode-width\n");
+		else
+			edrm_kms->display[disp_cnt].mode.hdisplay = width;
+
+		ret = of_property_read_u32(node, "qcom,mode-height", &height);
+		if (ret)
+			pr_err("Cannot read mode-height\n");
+		else
+			edrm_kms->display[disp_cnt].mode.vdisplay = height;
+		of_node_put(plane_node);
+		if (((width + x_offset) > intf_width) ||
+			((height + y_offset) > intf_height)) {
+			pr_err("Display offset is out of intf resolution\n");
+			goto fail;
+		}
+
 		/* Initialize crtc */
+		edrm_kms->display[disp_cnt].display_id = disp_cnt;
 		crtc = edrm_crtc_init(edrm_kms->dev,
 			&edrm_kms->display[disp_cnt], priv->planes[disp_cnt]);
 		if (IS_ERR(crtc)) {
@@ -527,16 +568,6 @@ fail:
 
 static int edrm_kms_postinit(struct msm_kms *kms)
 {
-	struct drm_device *dev;
-	struct drm_crtc *crtc;
-	struct msm_edrm_kms *edrm_kms;
-
-	edrm_kms = to_edrm_kms(kms);
-	dev = edrm_kms->dev;
-
-	drm_for_each_crtc(crtc, dev)
-		edrm_crtc_postinit(crtc);
-
 	place_marker("eDRM driver init completed");
 	return 0;
 }
