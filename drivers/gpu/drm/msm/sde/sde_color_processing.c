@@ -110,8 +110,9 @@ enum {
 	} while (0)
 
 static void sde_cp_get_hw_payload(struct sde_cp_node *prop_node,
-				  struct sde_hw_cp_cfg *hw_cfg,
-				  bool *feature_enabled)
+				struct sde_hw_cp_cfg *hw_cfg,
+				bool *feature_enabled,
+				uint32_t offset, uint32_t size)
 {
 
 	struct drm_property_blob *blob = NULL;
@@ -122,8 +123,8 @@ static void sde_cp_get_hw_payload(struct sde_cp_node *prop_node,
 	blob = prop_node->blob_ptr;
 	if (prop_node->prop_flags & DRM_MODE_PROP_BLOB) {
 		if (blob) {
-			hw_cfg->len = blob->length;
-			hw_cfg->payload = blob->data;
+			hw_cfg->len = (size == 0) ? blob->length : size;
+			hw_cfg->payload = (uint8_t *)blob->data + offset;
 			*feature_enabled = true;
 		}
 	} else if (prop_node->prop_flags & DRM_MODE_PROP_RANGE) {
@@ -143,6 +144,45 @@ static void sde_cp_get_hw_payload(struct sde_cp_node *prop_node,
 	} else {
 		DRM_ERROR("property type is not supported\n");
 	}
+}
+
+static void sde_cp_set_multiple_pa_hsic(uint32_t dspp_index,
+			struct sde_hw_dspp *hw_dspp,
+			struct sde_cp_node *prop_node)
+{
+	struct drm_msm_pa_hsic *hsic_cfg;
+	struct sde_hw_cp_cfg hw_cp_cfg;
+	uint32_t offset = 0;
+	uint32_t hw_cfg_size = 0;
+	bool feature_enabled = false;
+
+	/*
+	 * User may send multiple setting of HSIC data
+	 * to kernel, all are stored in payload.
+	 * So for multiple HSIC cases, need to call
+	 * sde_cp_get_hw_payload to retrieve the
+	 * individual set of HSIC with one offset.
+	 */
+	hw_cfg_size = sizeof(struct drm_msm_pa_hsic);
+
+	offset = dspp_index * hw_cfg_size;
+
+	sde_cp_get_hw_payload(prop_node, &hw_cp_cfg,
+		&feature_enabled, offset, hw_cfg_size);
+
+	hsic_cfg = (struct drm_msm_pa_hsic *)hw_cp_cfg.payload;
+
+	if ((hsic_cfg->flags & PA_HSIC_LEFT_DISPLAY_ONLY)
+		&& (dspp_index > 0)) {
+		/* skip right side programming */
+		return;
+	} else if ((hsic_cfg->flags & PA_HSIC_RIGHT_DISPLAY_ONLY)
+		&& (dspp_index == 0)) {
+		/* skip left side programming */
+		return;
+	}
+
+	hw_dspp->ops.setup_pa_hsic(hw_dspp, &hw_cp_cfg);
 }
 
 static int sde_cp_disable_crtc_blob_property(struct sde_cp_node *prop_node)
@@ -444,13 +484,16 @@ static void sde_cp_crtc_setfeature(struct sde_cp_node *prop_node,
 	struct sde_hw_cp_cfg hw_cfg;
 	struct sde_hw_mixer *hw_lm;
 	struct sde_hw_dspp *hw_dspp;
-	struct drm_msm_pa_hsic *hsic_cfg;
 	u32 num_mixers = sde_crtc->num_mixers;
 	int i = 0;
 	bool feature_enabled = false;
+	uint32_t hw_cfg_num = 0;
+	uint32_t hw_cfg_size = 0;
 	int ret = 0;
 
-	sde_cp_get_hw_payload(prop_node, &hw_cfg, &feature_enabled);
+	/* get default hw_cfg */
+	sde_cp_get_hw_payload(prop_node, &hw_cfg,
+			&feature_enabled, 0, 0);
 
 	for (i = 0; i < num_mixers && !ret; i++) {
 		hw_lm = sde_crtc->mixers[i].hw_lm;
@@ -490,28 +533,27 @@ static void sde_cp_crtc_setfeature(struct sde_cp_node *prop_node,
 				ret = -EINVAL;
 				continue;
 			}
-			if (hw_cfg.payload && (hw_cfg.len ==
-				sizeof(struct drm_msm_pa_hsic))) {
-				/* hw_cfg is valid, check for feature flag */
-				hsic_cfg = (struct drm_msm_pa_hsic *)
-						hw_cfg.payload;
-				if ((hsic_cfg->flags &
-					PA_HSIC_LEFT_DISPLAY_ONLY) && (i > 0)) {
-					/* skip right side programming */
-					continue;
-				} else if ((hsic_cfg->flags &
-					PA_HSIC_RIGHT_DISPLAY_ONLY)
-					&& (i == 0)) {
-					/* skip left side programming */
-					continue;
+			hw_cfg_size = sizeof(struct drm_msm_pa_hsic);
+
+			if (hw_cfg.payload) {
+				hw_cfg_num = hw_cfg.len / hw_cfg_size;
+
+				if (!hw_cfg_num || hw_cfg_num > num_mixers) {
+					DRM_ERROR("invalid hw cfg lenth(%d)\n",
+							hw_cfg.len);
+					ret = -EINVAL;
+					break;
 				}
+
+				sde_cp_set_multiple_pa_hsic(i, hw_dspp,
+							prop_node);
 			}
-			hw_dspp->ops.setup_pa_hsic(hw_dspp, &hw_cfg);
 			break;
 		case SDE_CP_CRTC_DSPP_MEMCOLOR:
-			if (!hw_dspp || !hw_dspp->ops.setup_pa_memcolor)
+			if (!hw_dspp || !hw_dspp->ops.setup_pa_memcolor) {
 				ret = -EINVAL;
 				continue;
+			}
 			hw_dspp->ops.setup_pa_memcolor(hw_dspp, &hw_cfg);
 			break;
 		case SDE_CP_CRTC_DSPP_SIXZONE:
