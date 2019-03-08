@@ -471,6 +471,7 @@ static int pil_mss_reset(struct pil_desc *pil)
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
 	phys_addr_t start_addr = pil_get_entry_addr(pil);
 	int ret;
+	struct pil_priv *priv = pil->priv;
 
 	trace_pil_func(__func__);
 	if (drv->mba_dp_phys)
@@ -522,6 +523,25 @@ static int pil_mss_reset(struct pil_desc *pil)
 	/* Make sure RMB regs are written before bringing modem out of reset */
 	mb();
 
+	/*
+	 * MBA bootup can happen in cold boot, SSR, and also GVM restart.
+	 *
+	 * In cold boot, seems that no "MSS region scribble" in MBA.
+	 * In SSR and GVM restart, there is "MSS region scribble" when it is
+	 * secure-boot/efused setup.
+	 *
+	 * In cold boot/GVM restart, "MSS" region is owned by APSS here.
+	 * Let's assign this region to MPSS in case MBA will do scribble later
+	 * since no method to know it is cold boot or GVM restart case.
+	 *
+	 * In SSR, MSS region is still owned by modem here. So actually no need
+	 * for this step. So we avoid it.
+	 */
+	if (!pil->modem_ssr) {
+		dev_dbg(pil->dev, "assign MSS region to modem\n");
+		pil_modem_assign_memory(pil);
+	}
+
 	ret = pil_q6v5_reset(pil);
 	if (ret)
 		goto err_q6v5_reset;
@@ -531,6 +551,14 @@ static int pil_mss_reset(struct pil_desc *pil)
 		ret = pil_msa_wait_for_mba_ready(drv);
 		if (ret)
 			goto err_q6v5_reset;
+	}
+
+	/*
+	 * after MBA boot up, let's assign back mss region to linux
+	 */
+	if (!pil->modem_ssr) {
+		dev_dbg(pil->dev, "free MSS region back to linux\n");
+		pil_modem_free_memory(pil);
 	}
 
 	dev_info(pil->dev, "MBA boot done\n");

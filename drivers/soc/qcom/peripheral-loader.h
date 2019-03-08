@@ -36,6 +36,7 @@ struct pil_priv;
  * @unmap_fw_mem: Custom function used to undo mapping by map_fw_mem.
  * This defaults to iounmap if not specified.
  * @shutdown_fail: Set if PIL op for shutting down subsystem fails.
+ * @modem_ssr: true if modem is in SSR rather than cold boot or GVM restart.
  * @clear_fw_region: Clear fw region on failure in loading.
  * @subsys_vmid: memprot id for the subsystem.
  */
@@ -56,6 +57,7 @@ struct pil_desc {
 	void (*unmap_fw_mem)(void *virt, size_t size, void *data);
 	void *map_data;
 	bool shutdown_fail;
+	bool modem_ssr;
 	bool clear_fw_region;
 	u32 subsys_vmid;
 };
@@ -131,6 +133,7 @@ extern int pil_boot(struct pil_desc *desc);
 extern void pil_shutdown(struct pil_desc *desc);
 extern void pil_free_memory(struct pil_desc *desc);
 extern void pil_modem_free_memory(struct pil_desc *desc);
+extern void pil_modem_assign_memory(struct pil_desc *desc);
 extern void pil_desc_release(struct pil_desc *desc);
 extern phys_addr_t pil_get_entry_addr(struct pil_desc *desc);
 extern int pil_do_ramdump(struct pil_desc *desc, void *ramdump_dev,
@@ -150,6 +153,7 @@ static inline int pil_boot(struct pil_desc *desc) { return 0; }
 static inline void pil_shutdown(struct pil_desc *desc) { }
 static inline void pil_free_memory(struct pil_desc *desc) { }
 static inline void pil_modem_free_memory(struct pil_desc *desc) { }
+static inline void pil_modem_assign_memory(struct pil_desc *desc) { }
 static inline void pil_desc_release(struct pil_desc *desc) { }
 static inline phys_addr_t pil_get_entry_addr(struct pil_desc *desc)
 {

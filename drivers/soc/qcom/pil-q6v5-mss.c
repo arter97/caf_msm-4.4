@@ -122,6 +122,10 @@ static int modem_shutdown(const struct subsys_desc *subsys, bool force_stop)
 
 	pil_shutdown(&drv->q6->desc);
 
+	if (force_stop) {
+		pr_info("force modem shutdown, and assuming as in SSR\n");
+		drv->q6->desc.modem_ssr = true;
+	}
 	return 0;
 }
 
@@ -223,6 +227,7 @@ static int pil_subsys_init(struct modem_data *drv,
 	drv->subsys_desc.stop_ack_handler = modem_stop_ack_intr_handler;
 	drv->subsys_desc.wdog_bite_handler = modem_wdog_bite_intr_handler;
 
+	drv->q6->desc.modem_ssr = false;
 	drv->subsys = subsys_register(&drv->subsys_desc);
 	if (IS_ERR(drv->subsys)) {
 		ret = PTR_ERR(drv->subsys);

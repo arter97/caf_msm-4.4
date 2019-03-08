@@ -1038,6 +1038,8 @@ int pil_boot(struct pil_desc *desc)
 	}
 	trace_pil_event("reset_done", desc);
 	pil_info(desc, "Brought out of reset\n");
+	desc->modem_ssr = false;
+
 err_auth_and_reset:
 	if (ret && desc->subsys_vmid > 0) {
 		pil_assign_mem_to_linux(desc, priv->region_start,
@@ -1137,6 +1139,22 @@ void pil_modem_free_memory(struct pil_desc *desc)
 	}
 }
 EXPORT_SYMBOL(pil_modem_free_memory);
+
+/**
+ * pil_modem_assign_memory() - assign memory resources associated with the modem
+ * @desc: descriptor from pil_desc_init()
+ */
+void pil_modem_assign_memory(struct pil_desc *desc)
+{
+	struct pil_priv *priv = desc->priv;
+
+	if (priv->region) {
+		if (desc->subsys_vmid > 0)
+			pil_assign_mem_to_subsys(desc, priv->region_start,
+				(priv->region_end - priv->region_start));
+	}
+}
+EXPORT_SYMBOL(pil_modem_assign_memory);
 
 static DEFINE_IDA(pil_ida);
 
