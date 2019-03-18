@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -46,6 +46,8 @@
 #define TEARDOWN_DEADLOCK_RETRY_MAX 5
 #include "msm_gem.h"
 #include "msm_mmu.h"
+
+static struct completion wait_display_completion;
 
 static void msm_drm_helper_hotplug_event(struct drm_device *dev)
 {
@@ -2266,6 +2268,7 @@ static int msm_pdev_probe(struct platform_device *pdev)
 		return ret;
 
 	ret = msm_add_master_component(&pdev->dev, match);
+	complete(&wait_display_completion);
 
 	return ret;
 }
@@ -2342,6 +2345,7 @@ static int __init msm_drm_register(void)
 	msm_edp_register();
 	hdmi_register();
 	adreno_register();
+	init_completion(&wait_display_completion);
 	return platform_driver_register(&msm_platform_driver);
 }
 
@@ -2356,8 +2360,19 @@ static void __exit msm_drm_unregister(void)
 	msm_smmu_driver_cleanup();
 }
 
+static int __init msm_drm_late_register(void)
+{
+	pr_debug("wait for display probe completion\n");
+	wait_for_completion(&wait_display_completion);
+
+	return 0;
+}
+
 module_init(msm_drm_register);
 module_exit(msm_drm_unregister);
+
+/* init level 7 */
+late_initcall(msm_drm_late_register);
 
 MODULE_AUTHOR("Rob Clark <robdclark@gmail.com");
 MODULE_DESCRIPTION("MSM DRM Driver");
