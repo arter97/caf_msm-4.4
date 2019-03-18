@@ -2897,5 +2897,5 @@ static void __exit dsi_display_unregister(void)
 	dsi_phy_drv_unregister();
 }
 
-module_init(dsi_display_register);
+fs_initcall(dsi_display_register);
 module_exit(dsi_display_unregister);

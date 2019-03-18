@@ -927,5 +927,5 @@ static void __exit drm_core_exit(void)
 	idr_destroy(&drm_minors_idr);
 }
 
-module_init(drm_core_init);
+fs_initcall(drm_core_init);
 module_exit(drm_core_exit);
