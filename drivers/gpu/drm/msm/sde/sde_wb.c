@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, 2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -741,5 +741,5 @@ static void __exit sde_wb_unregister(void)
 	platform_driver_unregister(&sde_wb_driver);
 }
 
-module_init(sde_wb_register);
+fs_initcall(sde_wb_register);
 module_exit(sde_wb_unregister);

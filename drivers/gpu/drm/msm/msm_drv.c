@@ -2368,7 +2368,8 @@ static int __init msm_drm_late_register(void)
 	return 0;
 }
 
-module_init(msm_drm_register);
+/* init level 6 */
+fs_initcall(msm_drm_register);
 module_exit(msm_drm_unregister);
 
 /* init level 7 */

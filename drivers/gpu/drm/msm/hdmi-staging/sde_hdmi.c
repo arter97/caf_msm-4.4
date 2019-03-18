@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -3363,5 +3363,5 @@ static void __exit sde_hdmi_unregister(void)
 	platform_driver_unregister(&sde_hdmi_driver);
 }
 
-module_init(sde_hdmi_register);
+fs_initcall(sde_hdmi_register);
 module_exit(sde_hdmi_unregister);

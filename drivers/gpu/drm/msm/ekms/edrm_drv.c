@@ -445,7 +445,7 @@ static int __init msm_edrm_late_register(void)
 	return 0;
 }
 
-module_init(msm_edrm_register);
+fs_initcall(msm_edrm_register);
 module_exit(msm_edrm_unregister);
 
 late_initcall(msm_edrm_late_register);

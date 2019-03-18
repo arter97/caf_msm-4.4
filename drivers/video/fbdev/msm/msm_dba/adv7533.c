@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2209,7 +2209,7 @@ static void __exit adv7533_exit(void)
 
 module_param_string(panel, mdss_mdp_panel, MDSS_MAX_PANEL_LEN, 0);
 
-module_init(adv7533_init);
+fs_initcall(adv7533_init);
 module_exit(adv7533_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("adv7533 driver");
