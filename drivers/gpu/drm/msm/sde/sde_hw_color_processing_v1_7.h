@@ -1,4 +1,4 @@
-/* Copyright (c) 2016,2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016,2018-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -50,6 +50,13 @@ void sde_setup_pipe_pa_cont_v1_7(struct sde_hw_pipe *ctx, void *cfg);
  * @cfg: Pointer to hsic data
  */
 void sde_setup_dspp_pa_hsic_v1_7(struct sde_hw_dspp *ctx, void *cfg);
+
+/**
+ * sde_get_dspp_pa_hsic_v1_7 - Get DSPP hsic feature in v1.7 hardware
+ * @ctx: Pointer to DSPP context
+ * @cfg: Pointer to hsic data
+ */
+void sde_get_dspp_pa_hsic_v1_7(struct sde_hw_dspp *ctx, void *cfg);
 
 /**
  * sde_setup_pipe_pa_memcol_v1_7 - setup SSPP memory color in v1.7 hardware

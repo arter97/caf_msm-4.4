@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2019 The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -1578,6 +1578,8 @@ static void sde_crtc_install_properties(struct drm_crtc *crtc,
 	struct drm_device *dev;
 	struct sde_kms_info *info;
 	struct sde_kms *sde_kms;
+	char prop_name[256];
+	u32 version;
 	static const struct drm_prop_enum_list e_secure_level[] = {
 		{SDE_DRM_SEC_NON_SEC, "sec_and_non_sec"},
 		{SDE_DRM_SEC_ONLY, "sec_only"},
@@ -1590,6 +1592,7 @@ static void sde_crtc_install_properties(struct drm_crtc *crtc,
 		return;
 	}
 
+	version = catalog->dspp[0].sblk->hsic.version >> 16;
 	sde_crtc = to_sde_crtc(crtc);
 	dev = crtc->dev;
 	sde_kms = _sde_crtc_get_kms(crtc);
@@ -1615,6 +1618,12 @@ static void sde_crtc_install_properties(struct drm_crtc *crtc,
 	msm_property_install_range(&sde_crtc->property_info,
 			"output_fence_offset", 0x0, 0, 1, 0,
 			CRTC_PROP_OUTPUT_FENCE_OFFSET);
+
+	snprintf(prop_name, ARRAY_SIZE(prop_name), "%s%d",
+			"SDE_DSPP_PA_READ_HSIC_V", version);
+	msm_property_install_range(&sde_crtc->property_info,
+			prop_name, 0x0, 0, U64_MAX, 0,
+			CRTC_PROP_DSPP_READ_HSIC);
 
 	msm_property_install_range(&sde_crtc->property_info,
 			"core_clk", 0x0, 0, U64_MAX,
@@ -1703,8 +1712,18 @@ static int sde_crtc_atomic_set_property(struct drm_crtc *crtc,
 		if (!ret) {
 			idx = msm_property_index(&sde_crtc->property_info,
 					property);
-			if (idx == CRTC_PROP_INPUT_FENCE_TIMEOUT)
+			switch (idx)  {
+
+			case CRTC_PROP_INPUT_FENCE_TIMEOUT:
 				_sde_crtc_set_input_fence_timeout(cstate);
+				break;
+			case CRTC_PROP_DSPP_READ_HSIC:
+				sde_cp_crtc_read_hsic(crtc, val);
+				break;
+			default:
+				/* nothing to do */
+				break;
+			}
 		} else {
 			ret = sde_cp_crtc_set_property(crtc,
 					property, val);

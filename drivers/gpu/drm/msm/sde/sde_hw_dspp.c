@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -77,9 +77,12 @@ static void _setup_dspp_ops(struct sde_hw_dspp *c, unsigned long features)
 			break;
 		case SDE_DSPP_HSIC:
 			if (c->cap->sblk->hsic.version ==
-				(SDE_COLOR_PROCESS_VER(0x1, 0x7)))
+				(SDE_COLOR_PROCESS_VER(0x1, 0x7))) {
 				c->ops.setup_pa_hsic =
 					sde_setup_dspp_pa_hsic_v1_7;
+				c->ops.get_pa_hsic =
+					sde_get_dspp_pa_hsic_v1_7;
+			}
 			break;
 		case SDE_DSPP_VLUT:
 			if (c->cap->sblk->vlut.version ==
