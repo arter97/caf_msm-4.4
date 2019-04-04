@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -135,6 +135,7 @@ enum msm_mdp_crtc_property {
 	CRTC_PROP_CORE_AB,
 	CRTC_PROP_CORE_IB,
 	CRTC_PROP_SECURITY_LEVEL,
+	CRTC_PROP_DSPP_READ_HSIC,
 
 	/* total # of properties */
 	CRTC_PROP_COUNT

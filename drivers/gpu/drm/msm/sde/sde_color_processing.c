@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, 2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016, 2018-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -257,6 +257,103 @@ static int sde_cp_handle_range_property(struct sde_cp_node *prop_node,
 	}
 
 	return ret;
+}
+
+int sde_cp_crtc_read_hsic(struct drm_crtc *crtc, uint64_t blob_id)
+{
+	struct sde_crtc *sde_crtc = NULL;
+	struct drm_property_blob *blob = NULL;
+	struct drm_msm_pa_hsic *hsic_cfg;
+	struct sde_hw_cp_cfg hw_cfg;
+	struct sde_hw_dspp *hw_dspp;
+	int i = 0, dspp_cnt;
+
+	if (!crtc) {
+		DRM_ERROR("invalid crtc %pK\n", crtc);
+		return -EINVAL;
+	}
+
+	sde_crtc = to_sde_crtc(crtc);
+	if (!sde_crtc) {
+		DRM_ERROR("invalid sde_crtc %pK\n", sde_crtc);
+		return -EINVAL;
+	}
+
+	/**
+	 * look up for the created blob & update it with the
+	 * register values.
+	 */
+	blob = drm_property_lookup_blob(crtc->dev, blob_id);
+	if (!blob) {
+		DRM_ERROR("invalid blob id %lld\n", blob_id);
+		return -EINVAL;
+	}
+
+	if (blob->length != sizeof(struct drm_msm_pa_hsic)) {
+		pr_err("incorrect blob size for payload\n");
+		return -EINVAL;
+	}
+
+	/**
+	 * sde_crtc is virtual ensure that hardware has been attached to the
+	 * crtc. Check LM and dspp counts.
+	 */
+	if (!sde_crtc->num_mixers ||
+	    sde_crtc->num_mixers > ARRAY_SIZE(sde_crtc->mixers)) {
+		DRM_ERROR("Invalid mixer config act cnt %d max cnt %ld\n",
+			sde_crtc->num_mixers, ARRAY_SIZE(sde_crtc->mixers));
+		return -EINVAL;
+	}
+
+	dspp_cnt = 0;
+	for (i = 0; i < sde_crtc->num_mixers; i++) {
+		if (sde_crtc->mixers[i].hw_dspp)
+			dspp_cnt++;
+	}
+
+	if (dspp_cnt < sde_crtc->num_mixers) {
+		DRM_ERROR("invalid dspp cnt %d mixer cnt %d\n", dspp_cnt,
+			sde_crtc->num_mixers);
+		return -EINVAL;
+	}
+
+	hw_cfg.len = blob->length;
+	hw_cfg.payload = blob->data;
+
+	hsic_cfg = (struct drm_msm_pa_hsic *)hw_cfg.payload;
+
+	for (i = 0; i < sde_crtc->num_mixers; i++) {
+		hw_dspp = sde_crtc->mixers[i].hw_dspp;
+
+
+		if ((hsic_cfg->flags & PA_HSIC_LEFT_DISPLAY_ONLY)
+			&& (i > 0)) {
+			/* skip right side reading */
+			continue;
+		} else if ((hsic_cfg->flags & PA_HSIC_RIGHT_DISPLAY_ONLY)
+			&& (i == 0)) {
+			/* skip left side reading */
+			continue;
+		}
+
+		mutex_lock(&sde_crtc->crtc_lock);
+		hw_dspp->ops.get_pa_hsic(hw_dspp, &hw_cfg);
+		mutex_unlock(&sde_crtc->crtc_lock);
+	}
+
+	/* update the payload */
+	pr_debug("%s hsic_cfg - flag = %d\n",
+				__func__, (int) hsic_cfg->flags);
+	pr_debug("%s hsic_cfg - hue = %d\n",
+				__func__, (int) hsic_cfg->hue);
+	pr_debug("%s hsic_cfg - saturation = %d\n",
+				__func__, (int) hsic_cfg->saturation);
+	pr_debug("%s hsic_cfg - value = %d\n",
+				__func__, (int) hsic_cfg->value);
+	pr_debug("%s hsic_cfg - contrast = %d\n",
+				__func__, (int) hsic_cfg->contrast);
+
+	return 0;
 }
 
 static int sde_cp_disable_crtc_property(struct drm_crtc *crtc,
@@ -545,8 +642,10 @@ static void sde_cp_crtc_setfeature(struct sde_cp_node *prop_node,
 					break;
 				}
 
+				mutex_lock(&sde_crtc->crtc_lock);
 				sde_cp_set_multiple_pa_hsic(i, hw_dspp,
 							prop_node);
+				mutex_unlock(&sde_crtc->crtc_lock);
 			}
 			break;
 		case SDE_CP_CRTC_DSPP_MEMCOLOR:

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016, 2019 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -80,6 +80,15 @@ void sde_cp_crtc_apply_properties(struct drm_crtc *crtc);
  */
 int sde_cp_crtc_get_property(struct drm_crtc *crtc,
 				struct drm_property *property, uint64_t *val);
+
+/**
+ * sde_cp_crtc_read_hsic: update the blob with color processing HSIC property
+ *                                      for a crtc.
+ * @crtc: Pointer to crtc.
+ * @blob_id: blob ID to update with the register values.
+ *
+ */
+int sde_cp_crtc_read_hsic(struct drm_crtc *crtc, uint64_t blob_id);
 
 /**
  * sde_cp_crtc_suspend: Suspend the crtc features
