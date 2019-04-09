@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -47,6 +47,35 @@
 #define INTF_DSI1_SEL                  BIT(16)
 
 static DEFINE_MUTEX(sde_splash_lock);
+
+static struct splash_pipe_caps splash_pipe_cap[MAX_BLOCKS] = {
+	{SSPP_VIG0, BIT(0), 0x7 << 0, BIT(0)},
+	{SSPP_VIG1, BIT(1), 0x7 << 3, BIT(2)},
+	{SSPP_VIG2, BIT(2), 0x7 << 6, BIT(4)},
+	{SSPP_VIG3, BIT(18), 0x7 << 26, BIT(6)},
+	{SSPP_RGB0, BIT(3), 0x7 << 9, BIT(8)},
+	{SSPP_RGB1, BIT(4), 0x7 << 12, BIT(10)},
+	{SSPP_RGB2, BIT(5), 0x7 << 15, BIT(12)},
+	{SSPP_RGB3, BIT(19), 0x7 << 29, BIT(14)},
+	{SSPP_DMA0, BIT(11), 0x7 << 18, BIT(16)},
+	{SSPP_DMA1, BIT(12), 0x7 << 21, BIT(18)},
+	{SSPP_CURSOR0, 0, 0, 0},
+	{SSPP_CURSOR1, 0, 0, 0},
+};
+
+static inline uint32_t _sde_splash_get_pipe_arrary_index(enum sde_sspp pipe)
+{
+	uint32_t i = 0, index = MAX_BLOCKS;
+
+	for (i = 0; i < MAX_BLOCKS; i++) {
+		if (pipe == splash_pipe_cap[i].pipe) {
+			index = i;
+			break;
+		}
+	}
+
+	return index;
+}
 
 /*
  * In order to free reseved memory from bootup, and we are not
@@ -341,9 +370,10 @@ static void _sde_splash_sent_pipe_update_uevent(struct sde_kms *sde_kms)
 	}
 
 	for (i = 0; i < MAX_BLOCKS; i++) {
-		if (sde_kms->splash_info.reserved_pipe_info[i] != 0xFFFFFFFF)
+		if (sde_kms->splash_info.reserved_pipe_info[i].pipe_id !=
+								0xFFFFFFFF)
 			snprintf(event_string, SZ_4K, "pipe%d avialable",
-				sde_kms->splash_info.reserved_pipe_info[i]);
+			sde_kms->splash_info.reserved_pipe_info[i].pipe_id);
 	}
 
 	DRM_INFO("generating pipe update event[%s]", event_string);
@@ -412,6 +442,37 @@ static bool _sde_splash_validate_commit(struct sde_kms *sde_kms,
 	}
 
 	return false;
+}
+
+static void
+_sde_splash_release_early_splash_layer(struct sde_splash_info *splash_info)
+{
+	int i = 0;
+	uint32_t index;
+
+	for (i = 0; i < MAX_BLOCKS; i++) {
+		if (splash_info->reserved_pipe_info[i].early_release) {
+			index = _sde_splash_get_pipe_arrary_index(
+				splash_info->reserved_pipe_info[i].pipe_id);
+			if (index < MAX_BLOCKS) {
+				/*
+				 * Clear flush bits, mixer mask and extension
+				 * mask of released pipes.
+				 */
+				splash_info->flush_bits &=
+					~splash_pipe_cap[index].flush_bit;
+				splash_info->mixer_mask &=
+					~splash_pipe_cap[index].mixer_mask;
+				splash_info->mixer_ext_mask &=
+					~splash_pipe_cap[index].mixer_ext_mask;
+			}
+
+			splash_info->reserved_pipe_info[i].pipe_id =
+								0xFFFFFFFF;
+			splash_info->reserved_pipe_info[i].early_release =
+								false;
+		}
+	}
 }
 
 __ref int sde_splash_init(struct sde_power_handle *phandle, struct msm_kms *kms)
@@ -532,6 +593,7 @@ int sde_splash_parse_reserved_plane_dt(struct drm_device *dev,
 	struct property *prop;
 	const char *cname;
 	int ret = 0, i = 0;
+	uint32_t index;
 
 	if (!splash_info || !cfg)
 		return -EINVAL;
@@ -541,8 +603,15 @@ int sde_splash_parse_reserved_plane_dt(struct drm_device *dev,
 	if (!parent)
 		return -EINVAL;
 
-	for (i = 0; i < MAX_BLOCKS; i++)
-		splash_info->reserved_pipe_info[i] = 0xFFFFFFFF;
+	for (i = 0; i < MAX_BLOCKS; i++) {
+		splash_info->reserved_pipe_info[i].pipe_id = 0xFFFFFFFF;
+		splash_info->reserved_pipe_info[i].early_release = false;
+	}
+
+	/* Reset flush bits and mixer mask of reserved planes */
+	splash_info->flush_bits = 0;
+	splash_info->mixer_mask = 0;
+	splash_info->mixer_ext_mask = 0;
 
 	i = 0;
 	for_each_child_of_node(parent, node) {
@@ -555,8 +624,23 @@ int sde_splash_parse_reserved_plane_dt(struct drm_device *dev,
 
 		of_property_for_each_string(node, "qcom,plane-name",
 					prop, cname)
-		splash_info->reserved_pipe_info[i] =
+		splash_info->reserved_pipe_info[i].pipe_id =
 					_sde_splash_parse_sspp_id(cfg, cname);
+		splash_info->reserved_pipe_info[i].early_release =
+				of_property_read_bool(node, "qcom,pipe-early-release");
+
+		index = _sde_splash_get_pipe_arrary_index(
+				splash_info->reserved_pipe_info[i].pipe_id);
+
+		if (index < MAX_BLOCKS) {
+			splash_info->flush_bits |=
+					splash_pipe_cap[index].flush_bit;
+			splash_info->mixer_mask |=
+					splash_pipe_cap[index].mixer_mask;
+			splash_info->mixer_ext_mask |=
+					splash_pipe_cap[index].mixer_ext_mask;
+		}
+
 		i++;
 	}
 
@@ -579,7 +663,9 @@ bool sde_splash_query_plane_is_reserved(struct sde_splash_info *sinfo,
 		return false;
 
 	for (i = 0; i < MAX_BLOCKS; i++) {
-		if (sinfo->reserved_pipe_info[i] == pipe)
+		if (!sinfo->reserved_pipe_info[i].early_release &&
+			(sinfo->reserved_pipe_info[i].pipe_id == pipe))
+
 			return true;
 	}
 
@@ -769,6 +855,16 @@ void sde_splash_setup_connector_count(struct sde_splash_info *sinfo,
 	}
 }
 
+void sde_splash_get_mixer_mask(struct sde_splash_info *sinfo,
+		bool *splash_on, u32 *mixercfg, u32 *mixercfg_ext)
+{
+	mutex_lock(&sde_splash_lock);
+	*splash_on = sinfo->handoff;
+	*mixercfg = sinfo->mixer_mask;
+	*mixercfg_ext = sinfo->mixer_ext_mask;
+	mutex_unlock(&sde_splash_lock);
+}
+
 bool sde_splash_get_lk_complete_status(struct msm_kms *kms)
 {
 	struct sde_kms *sde_kms = to_sde_kms(kms);
@@ -781,13 +877,19 @@ bool sde_splash_get_lk_complete_status(struct msm_kms *kms)
 
 	intr = sde_kms->hw_intr;
 
-	if (sde_kms->splash_info.handoff &&
-		!sde_kms->splash_info.display_splash_enabled &&
-		!sde_kms->splash_info.early_display_enabled &&
-		SDE_LK_EXIT_VALUE == SDE_REG_READ(&intr->hw,
-					SCRATCH_REGISTER_1)) {
-		SDE_DEBUG("LK totoally exits\n");
-		return true;
+	if (sde_kms->splash_info.handoff) {
+		if (sde_kms->splash_info.lk_is_exited)
+			return true;
+
+
+		if (!sde_kms->splash_info.display_splash_enabled &&
+			!sde_kms->splash_info.early_display_enabled &&
+			SDE_LK_EXIT_VALUE == SDE_REG_READ(&intr->hw,
+						SCRATCH_REGISTER_1)) {
+				SDE_DEBUG("LK totally exits\n");
+				sde_kms->splash_info.lk_is_exited = true;
+				return true;
+		}
 	}
 
 	return false;
@@ -865,6 +967,11 @@ int sde_splash_free_resource(struct msm_kms *kms,
 
 		/* set display's splash status to false after handoff is done */
 		_sde_splash_update_display_splash_status(sde_kms);
+
+		/* Reset flush_bits and mixer mask */
+		sinfo->flush_bits = 0;
+		sinfo->mixer_mask = 0;
+		sinfo->mixer_ext_mask = 0;
 
 		/* Finally mark handoff flag to false to say
 		 * handoff is complete.
@@ -946,8 +1053,8 @@ static int _sde_splash_clear_mixer_blendstage(struct msm_kms *kms,
 				mixer[i].hw_ctl->ops.clear_all_blendstages(
 						mixer[i].hw_ctl,
 						sinfo->handoff,
-						sinfo->reserved_pipe_info,
-						MAX_BLOCKS);
+						sinfo->mixer_mask,
+						sinfo->mixer_ext_mask);
 		}
 	}
 	return 0;
@@ -969,6 +1076,9 @@ int sde_splash_lk_stop_splash(struct msm_kms *kms,
 	mutex_lock(&sde_splash_lock);
 	if (_sde_splash_validate_commit(sde_kms, state) &&
 			sinfo->display_splash_enabled) {
+		/* release splash RGB layer */
+		_sde_splash_release_early_splash_layer(sinfo);
+
 		if (_sde_splash_lk_check(sde_kms->hw_intr)) {
 			_sde_splash_notify_lk_stop_splash(sde_kms->hw_intr);
 			error = _sde_splash_clear_mixer_blendstage(kms, state);

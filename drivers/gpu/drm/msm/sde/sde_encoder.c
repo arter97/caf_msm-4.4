@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -786,6 +786,8 @@ static inline void _sde_encoder_trigger_flush(struct drm_encoder *drm_enc,
 
 	if (extra_flush_bits && ctl->ops.update_pending_flush)
 		ctl->ops.update_pending_flush(ctl, extra_flush_bits);
+
+	phys->splash_flush_bits = phys->sde_kms->splash_info.flush_bits;
 
 	ctl->ops.trigger_flush(ctl);
 	SDE_EVT32(DRMID(drm_enc), ctl->idx);
