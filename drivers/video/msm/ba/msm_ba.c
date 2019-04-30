@@ -181,7 +181,6 @@ int msm_ba_s_input(void *instance, unsigned int index)
 			}
 		} else {
 			dprintk(BA_WARN, "Sd %d in use", ba_input->ba_out);
-			return -EBUSY;
 		}
 	}
 	rc = v4l2_subdev_call(ba_input->sd, video, s_routing,
