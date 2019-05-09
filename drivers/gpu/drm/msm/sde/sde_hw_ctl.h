@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -147,11 +147,11 @@ struct sde_hw_ctl_ops {
 	 * Set all blend stages to disabled
 	 * @ctx       : ctl path ctx pointer
 	 * @handoff   : indicate if lk is prepare for handoff
-	 * @resv_pipes  : reserved pipes in DT
-	 * @resv_pipes_length:    array size of array reserved_pipes
+	 * @splash_mask  : layer mixer mask of splash layers
+	 * @splash_ext_mask: layer mixer extension mask of splash layers
 	 */
 	void (*clear_all_blendstages)(struct sde_hw_ctl *ctx,
-		bool handoff, const u32 *resv_pipes, u32 resv_pipes_length);
+		bool handoff, u32 splash_mask, u32 splash_ext_mask);
 
 	/**
 	 * Configure layer mixer to pipe configuration
@@ -159,12 +159,12 @@ struct sde_hw_ctl_ops {
 	 * @lm        : layer mixer enumeration
 	 * @cfg       : blend stage configuration
 	 * @handoff   : indicate if lk is prepare for handoff
-	 * @resv_pipes  : reserved pipes in DT
-	 * @resv_pipes_length:   array size of array reserved_pipes
+	 * @splash_mask  : layer mixer mask of splash layers
+	 * @splash_ext_mask: layer mixer extension mask of splash layers
 	 */
 	void (*setup_blendstage)(struct sde_hw_ctl *ctx,
 		enum sde_lm lm, struct sde_hw_stage_cfg *cfg, u32 index,
-		bool handoff, const u32 *resv_pipes, u32 resv_pipes_length);
+		bool handoff, u32 splash_mask, u32 splash_ext_mask);
 
 	/**
 	 * read CTL_TOP register value for splash case

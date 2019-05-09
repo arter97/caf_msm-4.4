@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016, 2019 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -185,6 +185,7 @@ enum sde_intr_idx {
  *				between 0-2 Incremented when a new kickoff is
  *				scheduled. Decremented in irq handler
  * @pending_kickoff_wq:		Wait queue for blocking until kickoff completes
+ * @splash_flush_bits:		Flush bits of splash reserved hardware pipes
  */
 struct sde_encoder_phys {
 	struct drm_encoder *parent;
@@ -210,6 +211,7 @@ struct sde_encoder_phys {
 	atomic_t underrun_cnt;
 	atomic_t pending_kickoff_cnt;
 	wait_queue_head_t pending_kickoff_wq;
+	uint32_t splash_flush_bits;
 };
 
 static inline int sde_encoder_phys_inc_pending(struct sde_encoder_phys *phys)

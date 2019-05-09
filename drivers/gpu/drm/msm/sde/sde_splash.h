@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -35,7 +35,7 @@ struct splash_ctl_top {
 	struct splash_lm_hw lm[LM_MAX - LM_0];
 };
 
-struct sde_res_data {
+struct splash_res_data {
 	struct splash_ctl_top top[CTL_MAX - CTL_0];
 	u8 ctl_ids[CTL_MAX - CTL_0];
 	u8 lm_ids[LM_MAX - LM_0];
@@ -43,13 +43,24 @@ struct sde_res_data {
 	u8 lm_cnt;
 };
 
+struct splash_reserved_pipe_info {
+	uint32_t pipe_id;
+	bool early_release;
+};
+
+struct splash_pipe_caps {
+	enum sde_sspp pipe;
+	u32 flush_bit;
+	u32 mixer_mask;
+	u32 mixer_ext_mask;
+};
 
 struct sde_splash_info {
 	/* handoff flag */
 	bool handoff;
 
 	/* current hw configuration */
-	struct sde_res_data res;
+	struct splash_res_data res;
 
 	/* flag of display splash status */
 	bool display_splash_enabled;
@@ -94,8 +105,17 @@ struct sde_splash_info {
 	/* registered dst connector count */
 	uint32_t dsi_connector_cnt;
 
-	/* reserved pipe info for early RVC */
-	uint32_t reserved_pipe_info[MAX_BLOCKS];
+	/* reserved pipe info both for early RVC and early splash */
+	struct splash_reserved_pipe_info reserved_pipe_info[MAX_BLOCKS];
+
+	/* flush bits of reserved pipes */
+	uint32_t flush_bits;
+
+	/* layer mixer mask of reserved pipes */
+	uint32_t mixer_mask;
+
+	/* layer mixer extension mask of reserved pipes */
+	uint32_t mixer_ext_mask;
 };
 
 /* APIs for early splash handoff functions */
@@ -197,4 +217,12 @@ bool sde_splash_get_lk_complete_status(struct msm_kms *kms);
  */
 int sde_splash_setup_display_resource(struct sde_splash_info *sinfo,
 				void *disp, int connector_type);
+
+/**
+ * sde_splash_get_mixer_mask
+ *
+ * Retrieve mixer mask and extension mask from splash_info structure.
+ */
+void sde_splash_get_mixer_mask(struct sde_splash_info *sinfo,
+			bool *splash_on, u32 *mixercfg, u32 *mixercfg_ext);
 #endif
