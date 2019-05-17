@@ -287,6 +287,8 @@ static int cnss_qmi_initiate_cal_update_ind_hdlr(
 	struct cnss_cal_data *data;
 	int ret = 0;
 
+	memset(&ind_msg, 0, sizeof(ind_msg));
+
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data) {
 		ret = -ENOMEM;
@@ -326,6 +328,8 @@ static int cnss_qmi_initiate_cal_download_ind_hdlr(
 	struct wlfw_initiate_cal_download_ind_msg_v01 ind_msg;
 	struct cnss_cal_data *data;
 	int ret = 0;
+
+	memset(&ind_msg, 0, sizeof(ind_msg));
 
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data) {
