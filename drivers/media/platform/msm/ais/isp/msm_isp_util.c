@@ -2292,7 +2292,9 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	vfe_dev->isp_raw2_debug = 0;
 
 	/* Postpone hardware changes until early camera is complete */
+	msm_ais_enable_clocks();
 	msm_early_camera_wait();
+	msm_ais_disable_clocks();
 
 	if (vfe_dev->hw_info->vfe_ops.core_ops.init_hw(vfe_dev) < 0) {
 		pr_err("%s: init hardware failed\n", __func__);
