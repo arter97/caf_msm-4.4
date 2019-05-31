@@ -1346,8 +1346,12 @@ static int _sde_plane_mode_set(struct drm_plane *plane,
 		if (sde_plane_get_property(pstate, PLANE_PROP_SRC_CONFIG) &
 			BIT(SDE_DRM_DEINTERLACE)) {
 			SDE_DEBUG_PLANE(psde, "deinterlace\n");
-			for (idx = 0; idx < SDE_MAX_PLANES; ++idx)
-				pp->pipe_cfg.layout.plane_pitch[idx] <<= 1;
+
+			list_for_each_entry(pp, &psde->phy_plane_head,
+				phy_plane_list)
+				for (idx = 0; idx < SDE_MAX_PLANES; ++idx)
+					pp->pipe_cfg.layout.plane_pitch[idx]
+									<<= 1;
 			src.h /= 2;
 			src.y  = DIV_ROUND_UP(src.y, 2);
 			src.y &= ~0x1;
