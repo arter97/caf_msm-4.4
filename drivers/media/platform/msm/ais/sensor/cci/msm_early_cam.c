@@ -184,6 +184,7 @@ int msm_ais_enable_clocks(void)
 	return 0;
 
 }
+EXPORT_SYMBOL(msm_ais_enable_clocks);
 
 int msm_ais_disable_clocks(void)
 {
@@ -260,6 +261,7 @@ int msm_ais_disable_clocks(void)
 	return 0;
 
 }
+EXPORT_SYMBOL(msm_ais_disable_clocks);
 
 void msm_early_camera_wait(void)
 {

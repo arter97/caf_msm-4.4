@@ -42,6 +42,7 @@
 #include "msm_camera_io_util.h"
 #include "msm_camera_dt_util.h"
 #include "linux/hdmi.h"
+#include "msm_early_cam.h"
 
 #define DRIVER_NAME "adv7481"
 
@@ -2803,8 +2804,10 @@ static void adv7481_probe_delayed_work(struct work_struct *work)
 		if (val == EARLY_CAMERA_SIGNAL_DISABLED)
 			break;
 		msleep(1000);
+                msm_ais_enable_clocks();
 		val = adv7481_io_r_mb(
 			base + MMSS_A_VFE_0_SPARE);
+                msm_ais_disable_clocks();
 		pr_info("Waiting for signal from LK, reg val = 0x%x\n",
 			val);
 	}
