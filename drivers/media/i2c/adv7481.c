@@ -1087,6 +1087,7 @@ static long adv7481_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 	struct device *dev = state->dev;
 	union hdmi_infoframe hdmi_info_frame;
 	uint8_t inf_buffer[AVI_INFOFRAME_SIZE];
+	uint8_t val;
 
 	pr_debug("Enter %s with command: 0x%x", __func__, cmd);
 
@@ -1188,6 +1189,9 @@ static long adv7481_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 					hdmi_info_frame.avi.active_aspect;
 			state->hdmi_avi_infoframe.video_code =
 				hdmi_info_frame.avi.video_code;
+			val = adv7481_rd_byte(&state->i2c_client, state->i2c_cp_addr,
+				CP_REG_CP_REG_FF_ADDR);
+			pr_info("%s: Is ADV7481 in free run mode: 0x%x\n", __func__, val && 0x10);
 		} else {
 			pr_err("%s: No AVI Infoframe\n", __func__);
 			return -EINVAL;
@@ -1502,6 +1506,18 @@ static int adv7481_set_hdmi_mode(struct adv7481_state *state)
 	/* Audio Mute Speed Set to Fastest (Smallest Step Size) */
 	ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_hdmi_addr,
 		0x0F, 0x00);
+
+	ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_cp_addr,
+		CP_REG_FR_COLOR_SEL_2_ADDR, 0x00);
+	ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_cp_addr,
+		CP_REG_FR_COLOR_SEL_3_ADDR, 0x80);
+	ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_cp_addr,
+		CP_REG_FR_COLOR_SEL_4_ADDR, 0x80);
+
+	ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_cp_addr,
+		CP_REG_FR_COLOR_SEL_1_ADDR,
+		(ADV_REG_SETFIELD(1, CP_REG_CP_DEF_COL_MAN_VAL) |
+		ADV_REG_SETFIELD(1, CP_REG_CP_DEF_COL_AUTO)));
 
 	return ret;
 }
