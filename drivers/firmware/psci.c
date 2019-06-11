@@ -353,8 +353,12 @@ CPUIDLE_METHOD_OF_DECLARE(psci, "psci", &psci_cpuidle_ops);
 
 static int psci_system_suspend(unsigned long unused)
 {
+#ifdef CONFIG_MSM_GVM_QUIN
+	return psci_cpu_suspend(0, virt_to_phys(cpu_resume));
+#else
 	return invoke_psci_fn(PSCI_FN_NATIVE(1_0, SYSTEM_SUSPEND),
 			      virt_to_phys(cpu_resume), 0, 0);
+#endif
 }
 
 static int psci_system_suspend_enter(suspend_state_t state)
@@ -376,8 +380,13 @@ static void __init psci_init_system_suspend(void)
 
 	ret = psci_features(PSCI_FN_NATIVE(1_0, SYSTEM_SUSPEND));
 
+#ifdef CONFIG_MSM_GVM_QUIN
+	pr_info("psci system suspend support: %d\n", ret);
+	suspend_set_ops(&psci_suspend_ops);
+#else
 	if (ret != PSCI_RET_NOT_SUPPORTED)
 		suspend_set_ops(&psci_suspend_ops);
+#endif
 }
 
 static void __init psci_init_cpu_suspend(void)
