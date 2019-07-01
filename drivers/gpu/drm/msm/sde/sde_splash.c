@@ -1012,57 +1012,8 @@ int sde_splash_free_resource(struct msm_kms *kms,
 	return ret;
 }
 
-/*
- * Below function will detach all the pipes of the mixer
- */
-static int _sde_splash_clear_mixer_blendstage(struct msm_kms *kms,
-				struct drm_atomic_state *state)
-{
-	struct drm_crtc *crtc;
-	struct sde_crtc *sde_crtc;
-	struct sde_crtc_mixer *mixer;
-	int i;
-	struct sde_splash_info *sinfo;
-	struct sde_kms *sde_kms = to_sde_kms(kms);
-
-	sinfo = &sde_kms->splash_info;
-
-	if (!sinfo) {
-		SDE_ERROR("%s(%d): invalid splash info\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-
-	for (i = 0; i < state->dev->mode_config.num_crtc; i++) {
-		crtc = state->crtcs[i];
-		if (!crtc) {
-			SDE_ERROR("CRTC is NULL");
-			continue;
-		}
-		sde_crtc = to_sde_crtc(crtc);
-		if (!sde_crtc) {
-			SDE_ERROR("SDE CRTC is NULL");
-			return -EINVAL;
-		}
-		mixer = sde_crtc->mixers;
-		if (!mixer) {
-			SDE_ERROR("Mixer is NULL");
-			return -EINVAL;
-		}
-		for (i = 0; i < sde_crtc->num_mixers; i++) {
-			if (mixer[i].hw_ctl->ops.clear_all_blendstages)
-				mixer[i].hw_ctl->ops.clear_all_blendstages(
-						mixer[i].hw_ctl,
-						sinfo->handoff,
-						sinfo->mixer_mask,
-						sinfo->mixer_ext_mask);
-		}
-	}
-	return 0;
-}
-
-/*
- * Below function will notify LK to stop display splash.
- */
+/* Below function will notify LK to stop display splash.
+*/
 int sde_splash_lk_stop_splash(struct msm_kms *kms,
 				struct drm_atomic_state *state)
 {
@@ -1081,7 +1032,6 @@ int sde_splash_lk_stop_splash(struct msm_kms *kms,
 
 		if (_sde_splash_lk_check(sde_kms->hw_intr)) {
 			_sde_splash_notify_lk_stop_splash(sde_kms->hw_intr);
-			error = _sde_splash_clear_mixer_blendstage(kms, state);
 		}
 		sinfo->display_splash_enabled = false;
 	}
