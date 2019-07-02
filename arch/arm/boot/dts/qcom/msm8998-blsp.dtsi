@@ -35,7 +35,6 @@
 		spi9 = &spi_9;
 		spi10 = &spi_10;
 		spi11 = &spi_11;
-		spi12 = &spi_12;
 	};
 };
 

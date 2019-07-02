@@ -38,9 +38,6 @@
 };
 
 &soc {
-	ssc_sensors: qcom,msm-ssc-sensors {
-		status = "disabled";
-	};
 	qcom,msm-thermal {
 		qcom,hotplug-temp = <115>;
 		qcom,hotplug-temp-hysteresis = <25>;
@@ -56,10 +53,6 @@
 &pil_modem {
 	pinctrl-names = "default";
 	pinctrl-0 = <&modem_mux>;
-};
-
-&slim_msm {
-	status = "disabled";
 };
 
 &pm8994_mpps {
@@ -78,12 +71,6 @@
 	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on_sbc>;
 	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off
 			&sdc2_cd_on_sbc>;
-};
-
-&i2c_7 {
-	silabs4705@11 { /* SiLabs FM chip, slave id 0x11*/
-		status = "disabled";
-	};
 };
 
 &wil6210 {

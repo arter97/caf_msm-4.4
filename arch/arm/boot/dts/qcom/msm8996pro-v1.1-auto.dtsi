@@ -26,10 +26,6 @@
 	/delete-node/ rpm-regulator-smpb1;
 };
 
-&slim_msm {
-	status = "disabled";
-};
-
 &mdss_dsi0 {
 	/delete-property/ lab-supply;
 	/delete-property/ ibb-supply;
