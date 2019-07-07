@@ -371,6 +371,9 @@ static __init int init_trace_printk_function_export(void)
 	return 0;
 }
 
+int of_platform_populate_async_etrace_add_work(void);
+
+fs_initcall(of_platform_populate_async_etrace_add_work);
 fs_initcall(init_trace_printk_function_export);
 
 static __init int init_trace_printk(void)

@@ -3159,7 +3159,7 @@ static __init int event_trace_enable_again(void)
 
 early_initcall(event_trace_enable_again);
 
-static __init int event_trace_init(void)
+ __init int event_trace_init(void)
 {
 	struct trace_array *tr;
 	struct dentry *d_tracer;
@@ -3204,7 +3204,7 @@ void __init trace_event_init(void)
 	event_trace_enable();
 }
 
-fs_initcall(event_trace_init);
+//fs_initcall(event_trace_init);
 
 #ifdef CONFIG_FTRACE_STARTUP_TEST
 

@@ -651,4 +651,25 @@ static void __init of_platform_populate_async_pcie_add_work(struct device_node *
        }
 }
 
+int event_trace_init(void);
+
+static void __init of_platform_populate_async_etrace_work_fn(struct work_struct *work)
+{
+        event_trace_init();
+        trace_printk("event trace init has finished\n");
+}
+
+int __init of_platform_populate_async_etrace_add_work(void)
+{
+        struct work_struct *item;
+
+        if(of_platform_populate_async_wq) {
+                item = kzalloc(sizeof(struct work_struct), GFP_ATOMIC);
+                if(item) {
+                        INIT_WORK(item, of_platform_populate_async_etrace_work_fn);
+                        queue_work(of_platform_populate_async_wq, item);
+                }
+        }
+        return 0;
+}
 
