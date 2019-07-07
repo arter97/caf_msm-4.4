@@ -66,6 +66,8 @@
 #include <asm/xen/hypervisor.h>
 #include <asm/mmu_context.h>
 
+void of_platform_populate_async_wq_init(void);
+
 unsigned int boot_reason;
 EXPORT_SYMBOL(boot_reason);
 
@@ -394,6 +396,7 @@ static int __init arm64_device_init(void)
 {
 	if (of_have_populated_dt()) {
 		of_iommu_init();
+		of_platform_populate_async_wq_init();
 		of_platform_populate(NULL, of_default_bus_match_table,
 				     NULL, NULL);
 	} else if (acpi_disabled) {

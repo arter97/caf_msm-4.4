@@ -22,10 +22,13 @@
 #include <linux/init.h>
 #include <sound/core.h>
 
+void of_platform_populate_async_wq_destroy(void);
+
 static int __init alsa_sound_last_init(void)
 {
 	int idx, ok = 0;
-	
+
+	of_platform_populate_async_wq_destroy();
 	printk(KERN_INFO "ALSA device list:\n");
 	for (idx = 0; idx < SNDRV_CARDS; idx++)
 		if (snd_cards[idx] != NULL) {

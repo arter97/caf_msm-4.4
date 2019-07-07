@@ -48,6 +48,8 @@
 #include <linux/ipc_logging.h>
 #include <linux/msm_pcie.h>
 
+
+void __init of_platform_populate_async_wq_flush(void);
 #ifdef CONFIG_ARCH_MDMCALIFORNIUM
 #define PCIE_VENDOR_ID_RCP		0x17cb
 #define PCIE_DEVICE_ID_RCP		0x0302
@@ -6633,6 +6635,7 @@ static struct platform_driver msm_pcie_driver = {
 	.driver	= {
 		.name		= "pci-msm",
 		.owner		= THIS_MODULE,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.of_match_table	= msm_pcie_match,
 	},
 };
@@ -6643,7 +6646,7 @@ int __init pcie_init(void)
 	char rc_name[MAX_RC_NAME_LEN];
 
 	pr_alert("pcie:%s.\n", __func__);
-
+	of_platform_populate_async_wq_flush();
 	pcie_drv.rc_num = 0;
 	mutex_init(&pcie_drv.drv_lock);
 	mutex_init(&com_phy_lock);
@@ -6724,7 +6727,7 @@ static void __exit pcie_exit(void)
 		msm_pcie_sysfs_exit(&msm_pcie_dev[i]);
 }
 
-subsys_initcall_sync(pcie_init);
+fs_initcall_sync(pcie_init);
 module_exit(pcie_exit);
 
 

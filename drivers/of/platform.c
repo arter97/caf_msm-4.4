@@ -23,6 +23,20 @@
 #include <linux/of_platform.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
+#include <linux/workqueue.h>
+#include <linux/jiffies.h>
+
+static struct workqueue_struct *of_platform_populate_async_wq;
+static void of_platform_populate_async_pcie_add_work(struct device_node *bus,
+							struct device *parent);
+unsigned long msecs = 200;
+
+
+struct pcie_pop_item {
+       struct delayed_work work;
+       struct device_node *bus;
+       struct device *parent;
+};
 
 const struct of_device_id of_default_bus_match_table[] = {
 	{ .compatible = "simple-bus", },
@@ -367,6 +381,11 @@ static int of_platform_bus_create(struct device_node *bus,
 
 	for_each_child_of_node(bus, child) {
 		pr_debug("   create child: %s\n", child->full_name);
+		if((child->name) && (strcmp(child->name, "qcom,pcie")==0)) {
+			trace_printk("pcie node found %s\n",child->name);
+			of_platform_populate_async_pcie_add_work(child, &dev->dev);
+			continue;
+		}
 		rc = of_platform_bus_create(child, matches, lookup, &dev->dev, strict);
 		if (rc) {
 			of_node_put(child);
@@ -581,3 +600,55 @@ void of_platform_register_reconfig_notifier(void)
 #endif /* CONFIG_OF_DYNAMIC */
 
 #endif /* CONFIG_OF_ADDRESS */
+
+void __init of_platform_populate_async_wq_init(void)
+{
+       of_platform_populate_async_wq = alloc_workqueue("kasyncpopd", WQ_UNBOUND | WQ_HIGHPRI, 1);
+       if (!of_platform_populate_async_wq) {
+               printk("Cannot allocate async_populate workqueue\n");
+       }
+}
+
+
+void __init of_platform_populate_async_wq_flush(void)
+{
+       if(of_platform_populate_async_wq) {
+		flush_workqueue(of_platform_populate_async_wq);
+       }
+}
+
+void __init of_platform_populate_async_wq_destroy(void)
+{
+       if(of_platform_populate_async_wq) {
+		destroy_workqueue(of_platform_populate_async_wq);
+		of_platform_populate_async_wq = NULL;
+       }
+}
+
+static void __init of_platform_populate_async_pcie_work_fn(struct work_struct *work)
+{
+	struct pcie_pop_item *item =
+		container_of(work, struct pcie_pop_item, work.work);
+		trace_printk("Parsing pcie node started\n");
+	if(of_platform_bus_create(item->bus, of_default_bus_match_table, NULL, item->parent, true))
+		of_node_put(item->bus);
+		trace_printk("Parsing pcie node ended\n");
+	kfree(item);
+}
+
+static void __init of_platform_populate_async_pcie_add_work(struct device_node *bus, struct device *parent)
+{
+       struct pcie_pop_item *item;
+
+       if(of_platform_populate_async_wq) {
+               item = kzalloc(sizeof(struct pcie_pop_item), GFP_ATOMIC);
+               if(item) {
+                       INIT_DELAYED_WORK(&item->work, of_platform_populate_async_pcie_work_fn);
+                       item->bus = bus;
+                       item->parent = parent;
+                       queue_delayed_work(of_platform_populate_async_wq, &item->work, msecs_to_jiffies(msecs));
+               }
+       }
+}
+
+
