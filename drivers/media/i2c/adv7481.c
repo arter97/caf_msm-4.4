@@ -150,6 +150,8 @@ struct adv7481_state {
 	int mode;
 
 	/* AVI Infoframe Params */
+	bool valid_avi_infoframe;
+	union hdmi_infoframe hdmi_info_frame;
 	struct avi_infoframe_params hdmi_avi_infoframe;
 
 	/* resolution configuration */
@@ -439,6 +441,11 @@ static int adv7481_set_irq(struct adv7481_state *state)
 			ADV_REG_SETFIELD(1, IO_VMUTE_REQUEST_HDMI_MB1) |
 			ADV_REG_SETFIELD(1, IO_INT_SD_MB1));
 
+	/* Set New AVI Infoframe detect */
+	ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
+			IO_HDMI_EDG_INT_MASKB_1_ADDR,
+			ADV_REG_SETFIELD(1, IO_NEW_AVI_INFO_MB1));
+
 	/* Set cable detect */
 	ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
 			IO_HDMI_LVL_INT_MASKB_3_ADDR,
@@ -472,6 +479,8 @@ static int adv7481_reset_irq(struct adv7481_state *state)
 			IO_REG_DATAPATH_INT_MASKB_ADDR, 0x00);
 	ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
 			IO_HDMI_LVL_INT_MASKB_3_ADDR, 0x00);
+	ret |= adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
+			IO_HDMI_EDG_INT_MASKB_1_ADDR, 0x00);
 
 	return ret;
 }
@@ -583,12 +592,53 @@ static int adv7481_release_cci_clks(struct adv7481_state *state)
 	return ret;
 }
 
+static int adv7481_get_avi_infoframe(struct adv7481_state *state)
+{
+	int ret = -EINVAL;
+	int raw_status;
+	raw_status = adv7481_rd_byte(&state->i2c_client,
+				state->i2c_io_addr,
+				IO_HDMI_LVL_RAW_STATUS_1_ADDR);
+	if (ADV_REG_GETFIELD(raw_status, IO_AVI_INFO_RAW)) {
+		uint8_t inf_buffer[AVI_INFOFRAME_SIZE];
+		struct device *dev = state->dev;
+		pr_debug("%s: --------- Got AVI_INFO_FRAME----------\n", __func__);
+		inf_buffer[0] = adv7481_rd_byte(&state->i2c_client,
+			state->i2c_hdmi_inf_addr,
+			HDMI_REG_AVI_PACKET_ID_ADDR);
+		inf_buffer[1] = adv7481_rd_byte(&state->i2c_client,
+			state->i2c_hdmi_inf_addr,
+			HDMI_REG_AVI_INF_VERS_ADDR);
+		inf_buffer[2] = adv7481_rd_byte(&state->i2c_client,
+			state->i2c_hdmi_inf_addr,
+			HDMI_REG_AVI_INF_LEN_ADDR);
+		ret = adv7481_rd_block(&state->i2c_client,
+			state->i2c_hdmi_inf_addr,
+			HDMI_REG_AVI_INF_PB_ADDR,
+			&inf_buffer[3],
+			INFOFRAME_DATA_SIZE);
+		if (ret) {
+			pr_err("%s: Error in reading AVI Infoframe\n",
+					__func__);
+		} else if (hdmi_infoframe_unpack(&state->hdmi_info_frame,
+				(void *)inf_buffer) < 0) {
+			pr_err("%s: Infoframe unpack fail\n", __func__);
+		} else {
+			state->valid_avi_infoframe = true;
+			hdmi_infoframe_log(KERN_ERR, dev, &state->hdmi_info_frame);
+		}
+	}
+
+	return ret;
+}
+
 static void adv7481_irq_delay_work(struct work_struct *work)
 {
 	struct adv7481_state *state;
 	uint8_t int_raw_status;
-	uint8_t int_status;
-	uint8_t raw_status;
+	uint8_t int_status = 0;
+	uint8_t raw_status = 0;
+	uint8_t int_status_edg = 0;
 
 	state = container_of(work, struct adv7481_state,
 				irq_delayed_work.work);
@@ -672,7 +722,7 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 						IO_CP_LOCK_CP_RAW)) {
 					lock_status = 0;
 					pr_debug(
-					"%s: set lock_status IO_CP_LOCK_CP_RAW:0x%x\n",
+					"%s: -------------- set lock_status IO_CP_LOCK_CP_RAW:0x%x----------\n",
 					__func__, lock_status);
 				}
 				if (ADV_REG_GETFIELD(int_status,
@@ -680,8 +730,9 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 					ADV_REG_GETFIELD(raw_status,
 						IO_CP_UNLOCK_CP_RAW)) {
 					lock_status = 1;
+					state->valid_avi_infoframe = false;
 					pr_debug(
-					"%s: set lock_status IO_CP_UNLOCK_CP_RAW:0x%x\n",
+					"%s: --------------- set lock_status IO_CP_UNLOCK_CP_RAW:0x%x--------------\n",
 					__func__, lock_status);
 				}
 			}
@@ -694,6 +745,17 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 					V4L2_EVENT_MSM_BA_SIGNAL_IN_LOCK;
 				v4l2_subdev_notify(&state->sd,
 					event.type, &event);
+			}
+
+			int_status_edg = adv7481_rd_byte(&state->i2c_client,
+				state->i2c_io_addr,
+				IO_HDMI_EDG_INT_STATUS_1_ADDR);
+			pr_debug("%s: dev: %d got hdmi lvl int_status_edg: 0x%x\n",
+				__func__, state->device_num, int_status_edg);
+			adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
+				IO_HDMI_EDG_INT_CLEAR_1_ADDR, int_status_edg);
+			if (ADV_REG_GETFIELD(int_status_edg, IO_NEW_AVI_INFO_ST)) {
+				adv7481_get_avi_infoframe(state);
 			}
 		}
 
@@ -727,27 +789,30 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 			if (ADV_REG_GETFIELD(int_status, IO_CABLE_DET_A_ST)) {
 				cable_detected = ADV_REG_GETFIELD(raw_status,
 					IO_CABLE_DET_A_RAW);
-				pr_debug("%s: set cable_detected: 0x%x\n",
+				pr_debug("%s:--------- set cable_detected: 0x%x---------------\n",
 					__func__, cable_detected);
 				ptr[1] = cable_detected;
+				if (!cable_detected)
+					state->valid_avi_infoframe = false;
 				event.type = V4L2_EVENT_MSM_BA_CABLE_DETECT;
 				v4l2_subdev_notify(&state->sd,
 					event.type, &event);
 			}
+
 			/* Assumption is that vertical sync int
 			 * is the last one to come
 			 */
 			if (ADV_REG_GETFIELD(int_status, IO_V_LOCKED_ST)) {
 				if (ADV_REG_GETFIELD(raw_status,
-					IO_TMDSPLL_LCK_A_RAW) &&
+						IO_TMDSPLL_LCK_A_RAW) &&
 					ADV_REG_GETFIELD(raw_status,
-					IO_V_LOCKED_RAW) &&
+						IO_V_LOCKED_RAW) &&
 					ADV_REG_GETFIELD(raw_status,
-					IO_DE_REGEN_LCK_RAW)) {
-					pr_debug("%s: port settings changed\n",
+						IO_DE_REGEN_LCK_RAW)) {
+					pr_debug("%s:---------------- port settings changed--------------\n",
 						__func__);
 					event.type =
-					V4L2_EVENT_MSM_BA_PORT_SETTINGS_CHANGED;
+						V4L2_EVENT_MSM_BA_PORT_SETTINGS_CHANGED;
 					v4l2_subdev_notify(&state->sd,
 						event.type, &event);
 				}
@@ -1084,20 +1149,15 @@ static long adv7481_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 	struct adv7481_vid_params vid_params;
 	struct adv7481_hdmi_params hdmi_params;
 
-	struct device *dev = state->dev;
-	union hdmi_infoframe hdmi_info_frame;
-	uint8_t inf_buffer[AVI_INFOFRAME_SIZE];
-	uint8_t val;
-
 	pr_debug("Enter %s with command: 0x%x", __func__, cmd);
 
 	memset(&vid_params, 0, sizeof(struct adv7481_vid_params));
 	memset(&hdmi_params, 0, sizeof(struct adv7481_hdmi_params));
-	memset(&hdmi_info_frame, 0, sizeof(union hdmi_infoframe));
-	memset(inf_buffer, 0, AVI_INFOFRAME_SIZE);
 
 	if (!sd)
 		return -EINVAL;
+
+	mutex_lock(&state->mutex);
 
 	switch (cmd) {
 	case VIDIOC_HDMI_RX_CEC_S_LOGICAL:
@@ -1132,6 +1192,7 @@ static long adv7481_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 			if (ret) {
 				pr_err("%s:Error in adv7481_get_hdmi_timings\n",
 						__func__);
+				mutex_unlock(&state->mutex);
 				return -EINVAL;
 			}
 		}
@@ -1143,63 +1204,34 @@ static long adv7481_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		if (copy_to_user((void __user *)adv_arg.ptr,
 			(void *)&user_csi, sizeof(struct csi_ctrl_params))) {
 			pr_err("%s: Failed to copy CSI params\n", __func__);
+			mutex_unlock(&state->mutex);
 			return -EINVAL;
 		}
 		break;
 	}
 	case VIDIOC_G_AVI_INFOFRAME: {
-		int int_raw = adv7481_rd_byte(&state->i2c_client,
-			state->i2c_io_addr,
-			IO_HDMI_LVL_RAW_STATUS_1_ADDR);
-		adv7481_wr_byte(&state->i2c_client,
-			state->i2c_io_addr,
-			IO_HDMI_LVL_INT_CLEAR_1_ADDR, int_raw);
 		pr_debug("%s: VIDIOC_G_AVI_INFOFRAME\n", __func__);
-		if (ADV_REG_GETFIELD(int_raw, IO_AVI_INFO_RAW)) {
-			inf_buffer[0] = adv7481_rd_byte(&state->i2c_client,
-				state->i2c_hdmi_inf_addr,
-				HDMI_REG_AVI_PACKET_ID_ADDR);
-			inf_buffer[1] = adv7481_rd_byte(&state->i2c_client,
-				state->i2c_hdmi_inf_addr,
-				HDMI_REG_AVI_INF_VERS_ADDR);
-			inf_buffer[2] = adv7481_rd_byte(&state->i2c_client,
-				state->i2c_hdmi_inf_addr,
-				HDMI_REG_AVI_INF_LEN_ADDR);
-			ret = adv7481_rd_block(&state->i2c_client,
-				state->i2c_hdmi_inf_addr,
-				HDMI_REG_AVI_INF_PB_ADDR,
-				&inf_buffer[3],
-				INFOFRAME_DATA_SIZE);
+		if (!state->valid_avi_infoframe) {
+			ret = adv7481_get_avi_infoframe(state);
 			if (ret) {
-				pr_err("%s: Error in reading AVI Infoframe\n",
-						__func__);
+				pr_err("%s: No valid AVI Infoframe received\n", __func__);
+				mutex_unlock(&state->mutex);
 				return -EINVAL;
 			}
-			if (hdmi_infoframe_unpack(&hdmi_info_frame,
-					(void *)inf_buffer) < 0) {
-				pr_err("%s: Infoframe unpack fail\n", __func__);
-				return -EINVAL;
-			}
-			hdmi_infoframe_log(KERN_ERR, dev, &hdmi_info_frame);
-			state->hdmi_avi_infoframe.picture_aspect =
-				(enum picture_aspect_ratio)
-					hdmi_info_frame.avi.picture_aspect;
-			state->hdmi_avi_infoframe.active_aspect =
-				(enum active_format_aspect_ratio)
-					hdmi_info_frame.avi.active_aspect;
-			state->hdmi_avi_infoframe.video_code =
-				hdmi_info_frame.avi.video_code;
-			val = adv7481_rd_byte(&state->i2c_client, state->i2c_cp_addr,
-				CP_REG_CP_REG_FF_ADDR);
-			pr_info("%s: Is ADV7481 in free run mode: 0x%x\n", __func__, val && 0x10);
-		} else {
-			pr_err("%s: No AVI Infoframe\n", __func__);
-			return -EINVAL;
 		}
+		state->hdmi_avi_infoframe.picture_aspect =
+			(enum picture_aspect_ratio)
+				state->hdmi_info_frame.avi.picture_aspect;
+		state->hdmi_avi_infoframe.active_aspect =
+			(enum active_format_aspect_ratio)
+				state->hdmi_info_frame.avi.active_aspect;
+		state->hdmi_avi_infoframe.video_code =
+			state->hdmi_info_frame.avi.video_code;
 		if (copy_to_user((void __user *)adv_arg.ptr,
 				(void *)&state->hdmi_avi_infoframe,
 				sizeof(struct avi_infoframe_params))) {
 			pr_err("%s: Failed to copy AVI Infoframe\n", __func__);
+			mutex_unlock(&state->mutex);
 			return -EINVAL;
 		}
 		break;
@@ -1223,6 +1255,7 @@ static long adv7481_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 			(void *)&user_field,
 			sizeof(struct field_info_params))) {
 			pr_err("%s: Failed to copy FIELD params\n", __func__);
+			mutex_unlock(&state->mutex);
 			return -EINVAL;
 		}
 		break;
@@ -1231,6 +1264,7 @@ static long adv7481_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		ret = -ENOTTY;
 		break;
 	}
+	mutex_unlock(&state->mutex);
 	return ret;
 }
 
