@@ -1385,6 +1385,7 @@ static struct platform_driver msm_bus_device_driver = {
 	.driver = {
 		.name = "msm_bus_device",
 		.owner = THIS_MODULE,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.of_match_table = fabric_match,
 	},
 };

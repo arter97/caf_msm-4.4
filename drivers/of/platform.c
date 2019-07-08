@@ -602,7 +602,7 @@ void of_platform_register_reconfig_notifier(void)
 
 void __init of_platform_populate_async_wq_init(void)
 {
-       of_platform_populate_async_wq = alloc_workqueue("kasyncpopd", WQ_UNBOUND | WQ_HIGHPRI, 1);
+       of_platform_populate_async_wq = alloc_workqueue("kasyncpopd", WQ_UNBOUND | WQ_HIGHPRI, 2);
        if (!of_platform_populate_async_wq) {
                printk("Cannot allocate async_populate workqueue\n");
        }

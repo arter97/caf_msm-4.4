@@ -262,6 +262,7 @@ static struct platform_driver msm_sharedmem_driver = {
 	.driver         = {
 		.name   = DRIVER_NAME,
 		.owner	= THIS_MODULE,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.of_match_table = msm_sharedmem_of_match,
 	},
 };

@@ -418,6 +418,7 @@ static struct platform_driver mdss_pll_driver = {
 	.driver = {
 		.name = "mdss_pll",
 		.of_match_table = mdss_pll_dt_match,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 	},
 };
 
