@@ -1125,7 +1125,7 @@ static int _sde_splash_clear_mixer_blendstage(struct msm_kms *kms,
 	struct drm_crtc *crtc;
 	struct sde_crtc *sde_crtc;
 	struct sde_crtc_mixer *mixer;
-	int i;
+	int i, j;
 	struct sde_splash_info *sinfo;
 	struct sde_kms *sde_kms = to_sde_kms(kms);
 
@@ -1152,10 +1152,10 @@ static int _sde_splash_clear_mixer_blendstage(struct msm_kms *kms,
 			SDE_ERROR("Mixer is NULL");
 			return -EINVAL;
 		}
-		for (i = 0; i < sde_crtc->num_mixers; i++) {
-			if (mixer[i].hw_ctl->ops.clear_all_blendstages)
-				mixer[i].hw_ctl->ops.clear_all_blendstages(
-						mixer[i].hw_ctl,
+		for (j = 0; j < sde_crtc->num_mixers; j++) {
+			if (mixer[j].hw_ctl->ops.clear_all_blendstages)
+				mixer[j].hw_ctl->ops.clear_all_blendstages(
+						mixer[j].hw_ctl,
 						sinfo->handoff,
 						sinfo->mixer_mask,
 						sinfo->mixer_ext_mask);
