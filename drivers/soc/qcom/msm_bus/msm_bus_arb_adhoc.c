@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2017, 2019, The Linux Foundation. All rights reserved.
  *
  * This program is Mree software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -62,6 +62,10 @@ static void copy_remaining_nodes(struct list_head *edge_list, struct list_head
 		return;
 
 	search_node = kzalloc(sizeof(struct bus_search_type), GFP_KERNEL);
+	if (ZERO_OR_NULL_PTR(search_node)) {
+		MSM_BUS_ERR("%s: Failed to allocate search node", __func__);
+		return;
+	}
 	INIT_LIST_HEAD(&search_node->node_list);
 	list_splice_init(edge_list, traverse_list);
 	list_splice_init(traverse_list, &search_node->node_list);
@@ -376,6 +380,12 @@ static int getpath(struct device *src_dev, int dest, const char *cl_name)
 			/* Keep tabs of the previous search list */
 			search_node = kzalloc(sizeof(struct bus_search_type),
 					 GFP_KERNEL);
+			if (ZERO_OR_NULL_PTR(search_node)) {
+				MSM_BUS_ERR("%s: Failed to alloc search node",
+						__func__);
+				first_hop = -ENOMEM;
+				goto exit_getpath;
+			}
 			INIT_LIST_HEAD(&search_node->node_list);
 			list_splice_init(&traverse_list,
 					 &search_node->node_list);
