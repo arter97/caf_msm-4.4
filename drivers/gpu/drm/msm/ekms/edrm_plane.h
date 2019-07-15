@@ -28,9 +28,10 @@ struct edrm_plane {
 	u32 sspp_cfg_id;
 	u32 lm_stage;
 	u32 sspp_type;
+	bool yuv_plane;
 };
 
-int edrm_plane_flush(struct drm_plane *plane);
+int edrm_plane_flush(struct drm_plane *plane, struct drm_crtc *crtc);
 
 struct drm_plane *edrm_plane_init(struct drm_device *dev, int id, u32 type);
 

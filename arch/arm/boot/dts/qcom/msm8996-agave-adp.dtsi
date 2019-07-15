@@ -1647,22 +1647,32 @@
 		};
 		reserved_plane2: qcom,sde-reserved-plane@2 {
 			reg = <0x2>;
-			qcom,plane-name = "rgb0";
-			qcom,pipe-early-release;
+			qcom,plane-name = "vig2";
+			lm-stage = <3>;
 		};
 		reserved_plane3: qcom,sde-reserved-plane@3 {
 			reg = <0x3>;
-			qcom,plane-name = "rgb1";
+			qcom,plane-name = "rgb0";
 			qcom,pipe-early-release;
 		};
 		reserved_plane4: qcom,sde-reserved-plane@4 {
 			reg = <0x4>;
-			qcom,plane-name = "rgb2";
+			qcom,plane-name = "rgb1";
 			qcom,pipe-early-release;
 		};
 		reserved_plane5: qcom,sde-reserved-plane@5 {
 			reg = <0x5>;
+			qcom,plane-name = "rgb2";
+			qcom,pipe-early-release;
+		};
+		reserved_plane6: qcom,sde-reserved-plane@6 {
+			reg = <0x6>;
 			qcom,plane-name = "rgb3";
+			qcom,pipe-early-release;
+		};
+		reserved_plane7: qcom,sde-reserved-plane@7 {
+			reg = <0x7>;
+			qcom,plane-name = "vig1";
 			qcom,pipe-early-release;
 		};
 	};
@@ -1674,6 +1684,10 @@
 			qcom,label = "sde_hdmi";
 			qcom,intf-type = "hdmi";
 			qcom,assigned_plane = <&reserved_plane1>;
+			qcom,mode-x-offset = <0>;
+			qcom,mode-y-offset = <0>;
+			qcom,mode-width = <1920>;
+			qcom,mode-height = <1080>;
 		};
 	};
 };

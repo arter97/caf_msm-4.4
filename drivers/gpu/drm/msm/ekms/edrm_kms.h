@@ -30,6 +30,8 @@ struct msm_edrm_display {
 	int ctl_off;
 	int lm_off;
 	int plane_cnt;
+	u32 x_offset;
+	u32 y_offset;
 };
 
 struct msm_edrm_kms {
