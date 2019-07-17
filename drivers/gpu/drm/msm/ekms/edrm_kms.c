@@ -110,7 +110,6 @@ static void edrm_kms_complete_commit(struct msm_kms *kms,
 static void edrm_kms_wait_for_commit_done(struct msm_kms *kms,
 		struct drm_crtc *crtc)
 {
-	struct drm_encoder *encoder;
 	struct drm_device *dev;
 	int ret;
 
@@ -128,15 +127,10 @@ static void edrm_kms_wait_for_commit_done(struct msm_kms *kms,
 		return;
 	}
 
-	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
-		if (encoder->crtc != crtc)
-			continue;
-		ret = edrm_encoder_wait_for_commit_done(encoder);
-		if (ret && ret != -EWOULDBLOCK) {
-			pr_err("wait for commit done returned %d\n", ret);
-			break;
-		}
-	}
+	ret = edrm_crtc_wait_for_commit_done(crtc);
+	if (ret && ret != -EWOULDBLOCK)
+		pr_err("wait for commit done returned %d\n", ret);
+
 }
 
 static void edrm_kms_prepare_fence(struct msm_kms *kms,

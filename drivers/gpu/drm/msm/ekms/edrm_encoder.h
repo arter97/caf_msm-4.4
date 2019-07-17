@@ -28,12 +28,6 @@ struct edrm_encoder {
 #define to_edrm_encoder(x) container_of(x, struct edrm_encoder, base)
 
 /**
- * edrm_encoder_wait_for_commit_done - wait until the register flush is done
- * @drm_enc: Pointer to drm_encoder object
- */
-int edrm_encoder_wait_for_commit_done(struct drm_encoder *drm_enc);
-
-/**
  * edrm_encoder_destroy - free up drm_encoder object
  * @drm_enc: Pointer to drm encoder object
  */

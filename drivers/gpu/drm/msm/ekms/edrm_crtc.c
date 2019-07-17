@@ -18,11 +18,12 @@
 /* display control path Flush register offset */
 #define FLUSH_OFFSET   0x18
 
+#define COMMIT_MAX_POLLING 40
 static void edrm_crtc_atomic_flush(struct drm_crtc *crtc,
 		struct drm_crtc_state *old_crtc_state)
 {
 	struct drm_plane *plane;
-	struct drm_encoder *encoder;
+	unsigned plane_mask = 0;
 
 	if (!crtc) {
 		pr_err("invalid crtc\n");
@@ -40,28 +41,18 @@ static void edrm_crtc_atomic_flush(struct drm_crtc *crtc,
 		plane->state->fence = NULL;
 	}
 
-	drm_atomic_crtc_for_each_plane(plane, crtc) {
-		/* update SSPP bit in sspp_flush_mask */
-		edrm_plane_flush(plane, plane->state->crtc);
+	plane_mask = old_crtc_state->plane_mask;
+	plane_mask |= crtc->state->plane_mask;
+
+	drm_for_each_plane_mask(plane, crtc->dev, plane_mask) {
+		edrm_plane_flush(plane, crtc);
 	}
 
 	/* special handling for disable */
-	if (crtc->state->active_changed && !crtc->state->active) {
-		/* update SSPP bit for previously attached planes */
-		drm_atomic_crtc_state_for_each_plane(plane, old_crtc_state) {
-			if (plane->state->crtc != crtc)
-				edrm_plane_flush(plane, crtc);
-		}
-
+	if (!crtc->state->active) {
 		/* commit to disable all planes */
 		edrm_crtc_commit_kickoff(crtc);
-
-		/* wait until commit finished */
-		drm_for_each_encoder(encoder, crtc->dev) {
-			if (encoder->crtc != crtc)
-				continue;
-			edrm_encoder_wait_for_commit_done(encoder);
-		}
+		edrm_crtc_wait_for_commit_done(crtc);
 	}
 }
 
@@ -169,21 +160,49 @@ void edrm_crtc_commit_kickoff(struct drm_crtc *crtc)
 void edrm_crtc_complete_commit(struct drm_crtc *crtc,
 		struct drm_crtc_state *old_state)
 {
-	struct drm_device *dev;
-	struct msm_drm_private *priv;
-	struct drm_encoder *encoder;
-
-	dev = crtc->dev;
-	priv = dev->dev_private;
-	list_for_each_entry(encoder, &dev->mode_config.encoder_list, head) {
-		if (encoder->crtc != crtc)
-			continue;
-
-		edrm_encoder_wait_for_commit_done(encoder);
-	}
 }
 
 void edrm_crtc_prepare_commit(struct drm_crtc *crtc,
 				struct drm_crtc_state *old_state)
 {
+}
+
+int edrm_crtc_wait_for_commit_done(struct drm_crtc *crtc)
+{
+	struct drm_device *dev;
+	struct msm_drm_private *priv;
+	struct msm_edrm_kms *edrm_kms;
+	struct msm_edrm_display *display;
+	struct edrm_crtc *edrm_crtc;
+	struct sde_kms *master_kms;
+	struct msm_drm_private *master_priv;
+	u32 ctl_off;
+	u32 flush_register = 0;
+	int i;
+
+	dev = crtc->dev;
+	priv = dev->dev_private;
+	edrm_kms = to_edrm_kms(priv->kms);
+	master_priv = edrm_kms->master_dev->dev_private;
+	master_kms = to_sde_kms(master_priv->kms);
+	edrm_crtc = to_edrm_crtc(crtc);
+	display = &edrm_kms->display[edrm_crtc->display_id];
+	ctl_off = display->ctl_off;
+
+	/* poll edrm_crtc->sspp_flush_mask until cleared */
+	for (i = 0; i < COMMIT_MAX_POLLING; i++) {
+		flush_register = readl_relaxed(master_kms->mmio +
+				ctl_off + 0x18);
+		if ((flush_register & edrm_crtc->sspp_flush_mask) != 0)
+			usleep_range(1000, 2000);
+		else
+			break;
+	}
+	if (i == COMMIT_MAX_POLLING)
+		pr_err("flush polling times out %x\n", flush_register);
+
+	/* reset sspp_flush_mask */
+	edrm_crtc->sspp_flush_mask = 0;
+
+	return 0;
 }

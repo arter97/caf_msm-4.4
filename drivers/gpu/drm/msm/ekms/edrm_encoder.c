@@ -14,8 +14,6 @@
 #include "edrm_crtc.h"
 #include "sde_kms.h"
 
-#define COMMIT_MAX_POLLING 40
-
 static void edrm_encoder_enable(struct drm_encoder *drm_enc)
 {
 	pr_debug("eDRM Encoder enable\n");
@@ -42,47 +40,6 @@ static const struct drm_encoder_helper_funcs edrm_encoder_helper_funcs = {
 static const struct drm_encoder_funcs edrm_encoder_funcs = {
 	.destroy = edrm_encoder_destroy,
 };
-
-int edrm_encoder_wait_for_commit_done(struct drm_encoder *drm_enc)
-{
-	struct drm_device *dev;
-	struct msm_drm_private *priv;
-	struct msm_edrm_kms *edrm_kms;
-	struct msm_edrm_display *display;
-	struct edrm_crtc *edrm_crtc;
-	struct sde_kms *master_kms;
-	struct msm_drm_private *master_priv;
-	u32 ctl_off;
-	u32 flush_register = 0;
-	int i;
-
-	dev = drm_enc->dev;
-	priv = dev->dev_private;
-	edrm_kms = to_edrm_kms(priv->kms);
-	master_priv = edrm_kms->master_dev->dev_private;
-	master_kms = to_sde_kms(master_priv->kms);
-	edrm_crtc = to_edrm_crtc(drm_enc->crtc);
-	display = &edrm_kms->display[edrm_crtc->display_id];
-	ctl_off = display->ctl_off;
-
-	/* poll edrm_crtc->sspp_flush_mask until cleared */
-	for (i = 0; i < COMMIT_MAX_POLLING; i++) {
-		flush_register = readl_relaxed(master_kms->mmio +
-				ctl_off + 0x18);
-		if ((flush_register & edrm_crtc->sspp_flush_mask) != 0)
-			usleep_range(1000, 2000);
-		else
-			break;
-	}
-	if (i == COMMIT_MAX_POLLING)
-		pr_err("flush polling times out %x\n", flush_register);
-
-	/* reset sspp_flush_mask */
-	edrm_crtc->sspp_flush_mask = 0;
-
-	return 0;
-}
-
 
 struct drm_encoder *edrm_encoder_init(struct drm_device *dev,
 					struct msm_edrm_display *display)

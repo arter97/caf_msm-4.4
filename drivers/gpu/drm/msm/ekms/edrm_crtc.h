@@ -59,4 +59,10 @@ void edrm_crtc_prepare_commit(struct drm_crtc *crtc,
  */
 void edrm_crtc_destroy(struct drm_crtc *crtc);
 
+/**
+ * edrm_crtc_wait_for_commit_done - wait until the register flush is done
+ * @crtc: Pointer to drm_crtc object
+ */
+int edrm_crtc_wait_for_commit_done(struct drm_crtc *crtc);
+
 #endif /* _EDRM_ENCODER_H_ */
