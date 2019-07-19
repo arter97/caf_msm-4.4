@@ -1683,7 +1683,7 @@
 		qcom,edrm-display-id@0 {
 			qcom,label = "sde_hdmi";
 			qcom,intf-type = "hdmi";
-			qcom,assigned_plane = <&reserved_plane1>;
+			qcom,assigned_plane = <&reserved_plane2 &reserved_plane1>;
 			qcom,mode-x-offset = <0>;
 			qcom,mode-y-offset = <0>;
 			qcom,mode-width = <1920>;
