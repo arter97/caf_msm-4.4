@@ -63,6 +63,8 @@ static int msm_tert_mi2s_tx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_quat_mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_sec_mi2s_rate = SAMPLING_RATE_48KHZ;
 
+static int msm_quat_mi2s_rate = SAMPLING_RATE_48KHZ;
+
 /* TDM default channels */
 static int msm_pri_tdm_tx_0_ch = 2;
 static int msm_pri_tdm_tx_1_ch = 2;
@@ -520,6 +522,10 @@ static const char *const tdm_slot_num_text[] = {"One", "Two", "Four",
 
 static const char *const tdm_slot_width_text[] = {"16", "24", "32"};
 
+static const char *const quat_mi2s_rate_text[] = {"192000", "48000"};
+static const char *const quat_mi2s_ch_text[] = {"One", "Two"};
+
+
 static struct afe_clk_set sec_mi2s_tx_clk = {
 	AFE_API_VERSION_I2S_CONFIG,
 	Q6AFE_LPASS_CLK_ID_SEC_MI2S_EBIT,
@@ -725,6 +731,54 @@ static int msm_proxy_rx_ch_put(struct snd_kcontrol *kcontrol,
 	msm_proxy_rx_ch = ucontrol->value.integer.value[0] + 1;
 	pr_debug("%s: msm_proxy_rx_ch = %d\n", __func__, msm_proxy_rx_ch);
 	return 1;
+}
+
+static int msm_quat_mi2s_ch_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_quat_mi2s_rx_ch = %d\n", __func__, msm_quat_mi2s_rx_ch);
+	ucontrol->value.integer.value[0] = msm_quat_mi2s_rx_ch - 1;
+	return 0;
+}
+
+static int msm_quat_mi2s_ch_put(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	msm_quat_mi2s_rx_ch = ucontrol->value.integer.value[0] + 1;
+	pr_debug("%s: msm_quat_mi2s_rx_ch = %d, ucontrol->value.integer.value[0] = %d\n",
+			__func__, msm_quat_mi2s_rx_ch,
+			(int)ucontrol->value.integer.value[0]);
+
+	return 0;
+}
+
+static int msm_quat_mi2s_rate_get(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_quat_mi2s_rate  = %d", __func__,
+		msm_quat_mi2s_rate);
+	ucontrol->value.integer.value[0] = msm_quat_mi2s_rate;
+	return 0;
+}
+
+static int msm_quat_mi2s_rate_put(struct snd_kcontrol *kcontrol,
+				  struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_quat_mi2s_rate = SAMPLING_RATE_192KHZ;
+		break;
+	case 1:
+		msm_quat_mi2s_rate = SAMPLING_RATE_48KHZ;
+		break;
+	default:
+		msm_quat_mi2s_rate = SAMPLING_RATE_48KHZ;
+		break;
+	}
+	pr_debug("%s: msm_quat_mi2s_rate = %d, ucontrol->value.integer.value[0] = %d\n",
+			__func__, msm_quat_mi2s_rate,
+			(int)ucontrol->value.integer.value[0]);
+	return 0;
 }
 
 static int msm_quat_mi2s_rx_bit_format_get(struct snd_kcontrol *kcontrol,
@@ -3246,7 +3300,7 @@ static int msm_mi2s_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 		break;
 	case 3:	/*MSM_QUAT_MI2S*/
 		pr_debug("%s: channel:%d\n", __func__, msm_quat_mi2s_rx_ch);
-		rate->min = rate->max = SAMPLING_RATE_48KHZ;
+		rate->min = rate->max = msm_quat_mi2s_rate;
 		channels->min = channels->max = msm_quat_mi2s_rx_ch;
 		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
 			msm_quat_mi2s_rx_bit_format);
@@ -4100,6 +4154,8 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(3, tdm_rate_text),
 	SOC_ENUM_SINGLE_EXT(6, tdm_slot_num_text),
 	SOC_ENUM_SINGLE_EXT(3, tdm_slot_width_text),
+	SOC_ENUM_SINGLE_EXT(2, quat_mi2s_rate_text),
+	SOC_ENUM_SINGLE_EXT(2, quat_mi2s_ch_text),
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -4113,6 +4169,10 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_proxy_rx_ch_get, msm_proxy_rx_ch_put),
 	SOC_ENUM_EXT("HDMI_RX SampleRate", msm_snd_enum[4],
 			hdmi_rx_sample_rate_get, hdmi_rx_sample_rate_put),
+    SOC_ENUM_EXT("QUAT_MI2S_RX SampleRate", msm_snd_enum[15],
+            msm_quat_mi2s_rate_get, msm_quat_mi2s_rate_put),
+    SOC_ENUM_EXT("QUAT_MI2S_RX Channels", msm_snd_enum[16],
+            msm_quat_mi2s_ch_get, msm_quat_mi2s_ch_put),
 	SOC_ENUM_EXT("PRI_TDM_TX_0 Channels", msm_snd_enum[5],
 			msm_pri_tdm_tx_0_ch_get, msm_pri_tdm_tx_0_ch_put),
 	SOC_ENUM_EXT("PRI_TDM_TX_1 Channels", msm_snd_enum[5],
