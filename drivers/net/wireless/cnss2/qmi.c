@@ -283,7 +283,7 @@ static int cnss_qmi_initiate_cal_update_ind_hdlr(
 					 void *msg, unsigned int msg_len)
 {
 	struct msg_desc ind_desc;
-	struct wlfw_initiate_cal_update_ind_msg_v01 ind_msg;
+	struct wlfw_initiate_cal_update_ind_msg_v01 ind_msg = {0};
 	struct cnss_cal_data *data;
 	int ret = 0;
 
@@ -323,7 +323,7 @@ static int cnss_qmi_initiate_cal_download_ind_hdlr(
 					 void *msg, unsigned int msg_len)
 {
 	struct msg_desc ind_desc;
-	struct wlfw_initiate_cal_download_ind_msg_v01 ind_msg;
+	struct wlfw_initiate_cal_download_ind_msg_v01 ind_msg = {0};
 	struct cnss_cal_data *data;
 	int ret = 0;
 
