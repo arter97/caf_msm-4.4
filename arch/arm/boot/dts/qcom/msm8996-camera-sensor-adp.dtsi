@@ -99,7 +99,7 @@
 		pinctrl-1 = <&cam_sensor_mclk2_suspend
 			&cam_sensor_front_suspend>;
 		gpios = <&tlmm 15 0>,
-			<&tlmm 23 0>,
+			<&tlmm 103 0>,
 			<&tlmm 26 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
@@ -217,7 +217,7 @@
 		pinctrl-1 = <&cam_sensor_mclk2_suspend
 				&cam_sensor_front_suspend>;
 		gpios = <&tlmm 15 0>,
-			<&tlmm 23 0>,
+			<&tlmm 103 0>,
 			<&tlmm 26 0>;
 		qcom,gpio-reset = <1>;
 		qcom,gpio-standby = <2>;
