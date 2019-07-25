@@ -121,4 +121,13 @@
 			    <86 512 500 800>;
 		status = "disabled";
 	};
+
+	virt_i2c_6: virtio-i2c@1c150000 {
+		compatible = "virtio,mmio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x1c150000 0x100>;
+		interrupts = <0 100 0>;
+		status = "disabled";
+	};
 };

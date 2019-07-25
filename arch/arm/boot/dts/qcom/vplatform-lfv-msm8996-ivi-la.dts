@@ -472,3 +472,7 @@
 
 	status = "okay";
 };
+
+&virt_i2c_6 {
+	status = "okay";
+};
