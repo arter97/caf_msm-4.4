@@ -1690,7 +1690,7 @@ static void sde_crtc_install_properties(struct drm_crtc *crtc,
 		sde_kms_info_add_keyint(info, "max_blendstages",
                         sde_kms->shd_display_count ?
                                 PRE_HANDOFF_MAX_BLENDSTAGES :
-				catalog->max_mixer_blendstages - 3);
+				catalog->max_mixer_blendstages - 4);
 	else
 		sde_kms_info_add_keyint(info, "max_blendstages",
 				catalog->max_mixer_blendstages);
