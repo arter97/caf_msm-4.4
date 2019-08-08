@@ -185,6 +185,7 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	struct sde_hw_ctl *ctl = mixer->hw_ctl;
 	struct sde_hw_stage_cfg *stage_cfg = &sde_crtc->stage_cfg;
 	struct sde_crtc_state *cstate;
+	struct sde_kms *sde_kms;
 
 	u32 flush_mask = 0, crtc_split_width;
 	uint32_t lm_idx = LEFT_MIXER, idx;
@@ -194,11 +195,17 @@ static void _sde_crtc_blend_setup_mixer(struct drm_crtc *crtc,
 	int right_crtc_zpos_cnt[SDE_STAGE_MAX + 1] = {0};
 
 	crtc_split_width = get_crtc_split_width(crtc);
+	sde_kms = _sde_crtc_get_kms(crtc);
 
 	drm_atomic_crtc_for_each_plane(plane, crtc) {
 
 		pstate = to_sde_plane_state(plane->state);
 		cstate = to_sde_crtc_state(crtc->state);
+
+		if (sde_kms && sde_kms->splash_info.handoff &&
+				plane->type == DRM_PLANE_TYPE_CURSOR) {
+                        pstate->stage = SDE_STAGE_6;
+                }
 
 		/* shared dual mixer mode will always enable both LM */
 		if (cstate->is_shared &&
