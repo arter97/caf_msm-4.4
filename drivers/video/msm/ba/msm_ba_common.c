@@ -153,7 +153,6 @@ void msm_ba_subdev_event_hndlr_delayed(struct work_struct *work)
 			msm_ba_signal_sessions_event(&ba_sd_event->sd_event);
 			list_del(&ba_sd_event->list);
 			kfree(ba_sd_event);
-			break;
 		}
 	} else {
 		dprintk(BA_ERR, "%s - queue empty!!!", __func__);
