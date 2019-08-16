@@ -50,6 +50,14 @@
 #define IO_PROG_XTAL_FREQ_LOW_BMSK              0x00FF
 #define IO_PROG_XTAL_FREQ_LOW_SHFT              0
 
+#define IO_REG_DATAPATH_CNTRL_ADDR              0x03
+#define IO_REG_CP_V_FREQ_BMSK                   0x70
+#define IO_REG_CP_V_FREQ_SHFT                   4
+
+#define IO_REG_IO_REG_04_ADDR                   0x04
+#define IO_REG_CP_FORCE_FREERUN_CH1_BMSK        0x80
+#define IO_REG_CP_FORCE_FREERUN_CH1_SHFT        7
+
 #define IO_REG_CP_VID_STD_ADDR                  0x05
 
 #define IO_REG_CSI_PIX_EN_SEL_ADDR              0x10
@@ -394,6 +402,27 @@
 #define CP_REG_BRIGHTNESS                       0x3C
 #define CP_REG_HUE                              0x3D
 #define CP_REG_VID_ADJ                          0x3E
+
+#define CP_REG_FR_COLOR_SEL_1_ADDR              0xBF
+#define CP_REG_CP_FORCE_FREERUN_BMSK            0x01
+#define CP_REG_CP_FORCE_FREERUN_SHFT            0
+#define CP_REG_CP_DEF_COL_AUTO_BMSK             0x02
+#define CP_REG_CP_DEF_COL_AUTO_SHFT             1
+#define CP_REG_CP_DEF_COL_MAN_VAL_BMSK          0x04
+#define CP_REG_CP_DEF_COL_MAN_VAL_SHFT          2
+
+#define CP_REG_FR_COLOR_SEL_2_ADDR              0xC0
+#define CP_REG_FR_COLOR_SEL_3_ADDR              0xC1
+#define CP_REG_FR_COLOR_SEL_4_ADDR              0xC2
+
+#define CP_REG_CLMP_POS_CNTRL_4_ADDR            0xC9
+#define CP_REG_DIS_AUTO_PARAM_BUFF_BMSK         0x01
+#define CP_REG_DIS_AUTO_PARAM_BUFF_SHFT         0
+
+#define CP_REG_CP_REG_FF_ADDR                   0xFF
+#define CP_REG_CP_FREE_RUN_BMSK                 0x10
+#define CP_REG_CP_FREE_RUN_SHFT                 4
+
 #define CP_CTR_VID_ADJ_EN                       0x80
 #define CP_REG_STDI_CH_ADDR                     0xB1
 #define CP_STDI_DVALID_CH1_BMSK                 0x0080
