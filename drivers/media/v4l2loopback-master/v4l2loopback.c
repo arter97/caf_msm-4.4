@@ -480,8 +480,13 @@ static ssize_t attr_show_format(struct device *cd,
 static ssize_t attr_store_format(struct device *cd,
 		struct device_attribute *attr, const char *buf, size_t len)
 {
-	struct v4l2_loopback_device *dev = v4l2loopback_cd2dev(cd);
 	int fps_num = 0, fps_den = 1;
+	struct v4l2_loopback_device *dev = v4l2loopback_cd2dev(cd);
+
+	if (dev == NULL) {
+		pr_err("\ndev value is null\n");
+		return -EINVAL;
+	}
 
 	/* only fps changing is supported */
 	if (sscanf(buf, "@%d/%d", &fps_num, &fps_den) > 0) {
@@ -1908,6 +1913,8 @@ static int v4l2_loopback_mmap(struct file *file, struct vm_area_struct *vma)
 		struct page *page;
 
 		page = (void *)vmalloc_to_page((void *)addr);
+		if (page == NULL)
+			return -EINVAL;
 
 		if (vm_insert_page(vma, start, page) < 0)
 			return -EAGAIN;
