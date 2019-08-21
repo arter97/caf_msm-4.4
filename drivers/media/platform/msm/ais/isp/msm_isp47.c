@@ -466,16 +466,24 @@ void msm_vfe47_process_violation_status(
 
 void msm_vfe47_process_error_status(struct vfe_device *vfe_dev)
 {
+	unsigned long flags;
 	uint32_t error_status1 = vfe_dev->error_info.error_mask1;
 
 	if (error_status1 & (1 << 0)) {
 		pr_err("%s: camif error status: 0x%x\n",
 			__func__, vfe_dev->error_info.camif_status);
+		spin_lock_irqsave(&vfe_dev->tasklet_lock, flags);
+		if (!vfe_dev->clk_enabled) {
+			/* client closed, delayed task should exit directly */
+			spin_unlock_irqrestore(&vfe_dev->tasklet_lock, flags);
+			return;
+		}
 		/* dump camif registers on camif error */
 		msm_camera_io_dump(vfe_dev->vfe_base + 0x478, 0x3C, 1);
 		/* testgen */
 		if (vfe_dev->axi_data.src_info[VFE_PIX_0].input_mux == TESTGEN)
 			msm_camera_io_dump(vfe_dev->vfe_base + 0xC58, 0x28, 1);
+		spin_unlock_irqrestore(&vfe_dev->tasklet_lock, flags);
 	}
 	if (error_status1 & (1 << 1))
 		pr_err("%s: stats bhist overwrite\n", __func__);
