@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -54,4 +54,6 @@ int msm_early_cam_disable_clocks(void);
 int msm_ais_enable_clocks(void);
 int msm_ais_disable_clocks(void);
 void msm_early_camera_wait(void);
+bool msm_early_camera_running(void);
+void msm_kill_early_camera(void);
 #endif

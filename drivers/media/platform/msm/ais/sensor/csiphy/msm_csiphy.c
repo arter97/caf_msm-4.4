@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,6 +28,7 @@
 #include "include/msm_csiphy_3_5_hwreg.h"
 #include "cam_hw_ops.h"
 #include "msm_camera_diag_util.h"
+#include "msm_lk_handoff_mgr/msm_early_cam_handoff.h"
 
 #define DBG_CSIPHY 0
 #define SOF_DEBUG_ENABLE 1
@@ -921,10 +922,13 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 	}
 	CDBG("%s:%d clk enable success\n", __func__, __LINE__);
 
-	if (csiphy_dev->csiphy_3phase == CSI_3PHASE_HW)
-		msm_csiphy_3ph_reset(csiphy_dev);
-	else
-		msm_csiphy_reset(csiphy_dev);
+	/* Skip csiphy reset if lk is running */
+	if (!msm_lk_handoff_get_lk_status(true)) {
+		if (csiphy_dev->csiphy_3phase == CSI_3PHASE_HW)
+			msm_csiphy_3ph_reset(csiphy_dev);
+		else
+			msm_csiphy_reset(csiphy_dev);
+	}
 
 	if (csiphy_dev->hw_dts_version == CSIPHY_VERSION_V30)
 		csiphy_dev->hw_version =

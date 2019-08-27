@@ -1621,6 +1621,10 @@
 	qcom,no-smr-check;
 };
 
+&cam_smmu {
+	linux,contiguous-region = <&early_camera_mem>;
+};
+
 &reserved_memory {
 	early_camera_mem: early_camera_mem@b3fff000 {
 		reg = <0 0xb3fff000 0 0x800000>;

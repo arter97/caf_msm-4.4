@@ -32,6 +32,11 @@ enum ais_mgr_cfg_ext_type_t {
 	AIS_DIAG_SET_GPIO_LIST,
 };
 
+enum lk_cam_mgr_cfg_type_t {
+	AIS_GET_LK_STATUS,
+	AIS_KILL_LK_CAMERA
+};
+
 #define AIS_CLK_ENABLE AIS_CLK_ENABLE
 #define AIS_CLK_DISABLE AIS_CLK_DISABLE
 
@@ -90,10 +95,18 @@ struct clk_mgr_cfg_data {
 	enum clk_mgr_cfg_type_t cfg_type;
 };
 
+struct lk_cam_mgr_cfg_data {
+	enum lk_cam_mgr_cfg_type_t cfg_type;
+	int lk_status;
+};
+
 #define VIDIOC_MSM_AIS_CLK_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE, struct clk_mgr_cfg_data)
 
 #define VIDIOC_MSM_AIS_CLK_CFG_EXT \
 	_IOWR('V', BASE_VIDIOC_PRIVATE+1, struct clk_mgr_cfg_data_ext)
+
+#define VIDIOC_MSM_AIS_LK_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE, struct lk_cam_mgr_cfg_data)
 
 #endif /* __UAPI_MEDIA_MSM_AIS_MGR_H__ */

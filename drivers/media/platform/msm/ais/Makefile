@@ -9,6 +9,7 @@ ccflags-y += -Idrivers/media/platform/msm/ais/jpeg_10
 ccflags-y += -Idrivers/media/platform/msm/ais/jpeg_dma
 ccflags-y += -Idrivers/media/platform/msm/ais/fd
 ccflags-y += -Idrivers/media/platform/msm/ais/common
+ccflags-y += -Idrivers/media/platform/msm/ais/msm_lk_handoff_mgr
 
 obj-$(CONFIG_MSM_AIS) += common/
 obj-$(CONFIG_MSM_AIS) += msm.o
@@ -22,5 +23,6 @@ obj-$(CONFIG_MSM_AIS_JPEG) += jpeg_10/
 obj-$(CONFIG_MSM_AIS_JPEGDMA) += jpeg_dma/
 obj-$(CONFIG_MSM_AIS) += msm_buf_mgr/
 obj-$(CONFIG_MSM_AIS) += msm_ais_mgr/
+obj-$(CONFIG_MSM_AIS) += msm_lk_handoff_mgr/
 obj-$(CONFIG_MSM_AIS) += msm_ais_diag/
 obj-$(CONFIG_MSM_AIS_FD) += fd/

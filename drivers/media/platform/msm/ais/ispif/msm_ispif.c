@@ -30,6 +30,7 @@
 #include "cam_hw_ops.h"
 #include "cam_soc_api.h"
 #include "msm_camera_diag_util.h"
+#include "msm_lk_handoff_mgr/msm_early_cam_handoff.h"
 
 #ifdef CONFIG_AIS_MSM_ISPIF_V1
 #include "msm_ispif_hwreg_v1.h"
@@ -462,33 +463,53 @@ static int msm_ispif_reset_hw(struct ispif_device *ispif)
 		ispif->clk_idx = 1;
 	}
 
-	atomic_set(&ispif->reset_trig[VFE0], 1);
-	/* initiate reset of ISPIF */
-	msm_camera_io_w(ISPIF_RST_CMD_MASK,
-				ispif->base + ISPIF_RST_CMD_ADDR);
+	/* Skip ispif reset if lk is running */
+	if (!msm_lk_handoff_get_lk_status(true)) {
+		atomic_set(&ispif->reset_trig[VFE0], 1);
+		/* initiate reset of ISPIF */
+		msm_camera_io_w(ISPIF_RST_CMD_MASK,
+			ispif->base + ISPIF_RST_CMD_ADDR);
 
-	timeout = wait_for_completion_timeout(
-			&ispif->reset_complete[VFE0], msecs_to_jiffies(500));
-	CDBG("%s: VFE0 done\n", __func__);
-
-	if (timeout <= 0) {
-		rc = -ETIMEDOUT;
-		pr_err("%s: VFE0 reset wait timeout\n", __func__);
-		goto clk_disable;
-	}
-
-	if (ispif->hw_num_isps > 1) {
-		atomic_set(&ispif->reset_trig[VFE1], 1);
-		msm_camera_io_w(ISPIF_RST_CMD_1_MASK,
-					ispif->base + ISPIF_RST_CMD_1_ADDR);
 		timeout = wait_for_completion_timeout(
-				&ispif->reset_complete[VFE1],
-				msecs_to_jiffies(500));
-		CDBG("%s: VFE1 done\n", __func__);
+			&ispif->reset_complete[VFE0], msecs_to_jiffies(500));
+		CDBG("%s: VFE0 done\n", __func__);
+
 		if (timeout <= 0) {
-			pr_err("%s: VFE1 reset wait timeout\n", __func__);
 			rc = -ETIMEDOUT;
+			pr_err("%s: VFE0 reset wait timeout\n", __func__);
+			goto clk_disable;
 		}
+		if (ispif->hw_num_isps > 1) {
+			atomic_set(&ispif->reset_trig[VFE1], 1);
+			msm_camera_io_w(ISPIF_RST_CMD_1_MASK,
+				ispif->base + ISPIF_RST_CMD_1_ADDR);
+			timeout = wait_for_completion_timeout(
+				&ispif->reset_complete[VFE1],
+					msecs_to_jiffies(500));
+			CDBG("%s: VFE1 done\n", __func__);
+			if (timeout <= 0) {
+				pr_err("%s: VFE1 reset wait timeout\n",
+					__func__);
+				rc = -ETIMEDOUT;
+			}
+		}
+	} else {
+		/* Reset only VFE1, LK is still using VFE0 */
+		if (ispif->hw_num_isps > 1) {
+			atomic_set(&ispif->reset_trig[VFE1], 1);
+			msm_camera_io_w(ISPIF_RST_CMD_1_MASK,
+				ispif->base + ISPIF_RST_CMD_1_ADDR);
+			timeout = wait_for_completion_timeout(
+				&ispif->reset_complete[VFE1],
+					msecs_to_jiffies(500));
+			CDBG("%s: VFE1 done\n", __func__);
+			if (timeout <= 0) {
+				pr_err("%s: VFE1 reset wait timeout\n",
+					__func__);
+				/* Ignore this error */
+			}
+		}
+		return rc;
 	}
 
 clk_disable:
@@ -1440,14 +1461,16 @@ static int msm_ispif_init(struct ispif_device *ispif,
 		if (!ispif->clk_mux_base)
 			return -ENOMEM;
 	}
-
 	rc = msm_ispif_reset_hw(ispif);
 	if (rc)
 		goto error_ahb;
 
-	rc = msm_ispif_reset(ispif);
-	if (rc)
-		goto error_ahb;
+	/* Skip ispif reset if lk is running */
+	if (!msm_lk_handoff_get_lk_status(true)) {
+		rc = msm_ispif_reset(ispif);
+		if (rc)
+			goto error_ahb;
+	}
 	ispif->ispif_state = ISPIF_POWER_UP;
 	return 0;
 

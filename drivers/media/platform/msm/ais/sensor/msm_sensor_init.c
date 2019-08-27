@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,6 +18,7 @@
 #include "msm_sd.h"
 #include "msm_camera_io_util.h"
 #include "msm_early_cam.h"
+#include "msm_lk_handoff_mgr/msm_early_cam_handoff.h"
 
 /* Logging macro */
 #undef CDBG
@@ -57,8 +58,6 @@ int32_t msm_sensor_driver_cmd(struct msm_sensor_init_t *s_init, void *arg)
 		return -EINVAL;
 	}
 
-	/* Postpone hardware changes until early camera is complete */
-	msm_early_camera_wait();
 	pr_debug("%s : %d", __func__, cfg->cfgtype);
 	switch (cfg->cfgtype) {
 	case CFG_SINIT_PROBE:
@@ -73,7 +72,8 @@ int32_t msm_sensor_driver_cmd(struct msm_sensor_init_t *s_init, void *arg)
 		break;
 
 	case CFG_SINIT_PROBE_DONE:
-		if (early_camera_clock_off == false) {
+		if (early_camera_clock_off == false &&
+		    !(msm_lk_handoff_get_lk_status(true))) {
 			msm_early_camera_wait();
 			rc = msm_early_cam_disable_clocks();
 			if (rc < 0) {

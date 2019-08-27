@@ -277,6 +277,16 @@ void msm_early_camera_wait(void)
 	}
 }
 
+bool msm_early_camera_running(void)
+{
+	return get_early_service_status(EARLY_CAMERA);
+}
+
+void msm_kill_early_camera(void)
+{
+	request_early_service_shutdown(EARLY_CAMERA);
+}
+
 static int msm_early_cam_probe(struct platform_device *pdev)
 {
 	int rc = 0;

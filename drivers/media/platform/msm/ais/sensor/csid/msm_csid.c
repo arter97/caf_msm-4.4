@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -37,6 +37,7 @@
 #include "include/msm_csid_3_5_1_hwreg.h"
 #include "cam_hw_ops.h"
 #include "msm_camera_diag_util.h"
+#include "msm_lk_handoff_mgr/msm_early_cam_handoff.h"
 
 #define V4L2_IDENT_CSID                            50002
 #define CSID_VERSION_V20                      0x02000011
@@ -659,10 +660,15 @@ static int msm_csid_init(struct csid_device *csid_dev, uint32_t *csid_version)
 	rc = msm_camera_enable_irq(csid_dev->irq, true);
 	if (rc < 0)
 		pr_err("%s: irq enable failed\n", __func__);
-	rc = msm_csid_reset(csid_dev);
-	if (rc < 0) {
-		pr_err("%s:%d msm_csid_reset failed\n", __func__, __LINE__);
-		goto msm_csid_reset_fail;
+
+	/* Skip csid reset if lk is running */
+	if (!msm_lk_handoff_get_lk_status(true)) {
+		rc = msm_csid_reset(csid_dev);
+		if (rc < 0) {
+			pr_err("%s:%d msm_csid_reset failed\n",
+				__func__, __LINE__);
+			goto msm_csid_reset_fail;
+		}
 	}
 
 	csid_dev->csid_state = CSID_POWER_UP;

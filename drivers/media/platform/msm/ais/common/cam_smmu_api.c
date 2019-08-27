@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2017, 2019 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,7 +24,10 @@
 #include <linux/dma-mapping.h>
 #include <linux/msm_dma_iommu_mapping.h>
 #include <linux/workqueue.h>
+#include <soc/qcom/early_domain.h>
 #include "cam_smmu_api.h"
+#include "msm_lk_handoff_mgr/early_camera_smmu.h"
+#include "msm_lk_handoff_mgr/msm_early_cam_handoff.h"
 
 #define SCRATCH_ALLOC_START SZ_128K
 #define SCRATCH_ALLOC_END   SZ_256M
@@ -1603,6 +1606,47 @@ cb_init_fail:
 	return rc;
 }
 
+static int cam_populate_early_smmu_context_banks(struct device *dev)
+{
+	int rc = 0;
+	struct cam_context_bank_info *cb = NULL;
+
+	if (get_early_service_status(EARLY_CAMERA)) {
+		cb = &iommu_cb_set.cb_info[0];
+
+		/* Init cam_smmu_early_camera_init */
+		rc = cam_smmu_early_camera_init(dev);
+		if (rc) {
+			pr_err("cam_smmu_early_camera_init failed");
+			return rc;
+		}
+
+		/* Disable smmu stage 1 translation */
+		cam_smmu_early_camera_config_stage1_translation(
+				cb->mapping, 0);
+
+		/* Its safe to attach smmu now */
+		rc = cam_smmu_attach(0);
+		if (rc) {
+			pr_err("early camera smm attach failed");
+			return rc;
+		}
+
+		/* Create 1 to 1 mapping on VFE physical address */
+		rc = cam_smmu_early_camera_physical_to_physical_map(
+				cb->mapping);
+		if (rc) {
+			pr_err("early camera smm attach failed");
+			return rc;
+		}
+
+		/* Its safe to enable smmu stage 1 translation  now */
+		cam_smmu_early_camera_config_stage1_translation(cb->mapping, 1);
+		pr_err("%s: iommu_cb:%s\n", __func__, cb->name);
+	}
+	return rc;
+}
+
 static int cam_smmu_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -1642,6 +1686,16 @@ static int cam_smmu_probe(struct platform_device *pdev)
 	mutex_init(&iommu_cb_set.payload_list_lock);
 	INIT_LIST_HEAD(&iommu_cb_set.payload_list);
 
+	rc = cam_populate_early_smmu_context_banks(dev);
+	if (rc < 0) {
+		pr_err("Error: populating early camera context banks\n");
+		msm_lk_handoff_update_smmu_status(false);
+		/* Ignore this error smmu attach will be done for late camera */
+		rc = 0;
+	} else {
+		msm_lk_handoff_update_smmu_status(true);
+	}
+
 	return rc;
 }
 
@@ -1651,6 +1705,8 @@ static int cam_smmu_remove(struct platform_device *pdev)
 	cam_smmu_reset_iommu_table(CAM_SMMU_TABLE_DEINIT);
 	if (of_device_is_compatible(pdev->dev.of_node, "qcom,msm-cam-smmu"))
 		cam_smmu_release_cb(pdev);
+	/* release all the resources related to early camera */
+	cam_smmu_early_camera_deinit();
 	return 0;
 }
 

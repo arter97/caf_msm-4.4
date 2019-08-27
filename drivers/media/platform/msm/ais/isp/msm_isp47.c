@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,6 +23,7 @@
 #include "msm_isp47.h"
 #include "cam_soc_api.h"
 #include "msm_camera_diag_util.h"
+#include "msm_lk_handoff_mgr/msm_early_cam_handoff.h"
 
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
@@ -163,6 +164,10 @@ void msm_vfe47_config_irq(struct vfe_device *vfe_dev,
 		uint32_t irq0_mask, uint32_t irq1_mask,
 		enum msm_isp_irq_operation oper)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	switch (oper) {
 	case MSM_ISP_IRQ_ENABLE:
 		vfe_dev->irq0_mask |= irq0_mask;
@@ -282,6 +287,10 @@ int msm_vfe47_init_hardware(struct vfe_device *vfe_dev)
 	int rc = -1;
 	enum cam_ahb_clk_client id;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_init_hardware((void *)vfe_dev))
+		return 0;
+
 	if (vfe_dev->pdev->id == 0)
 		id = CAM_AHB_CLIENT_VFE0;
 	else
@@ -329,6 +338,10 @@ void msm_vfe47_release_hardware(struct vfe_device *vfe_dev)
 {
 	enum cam_ahb_clk_client id;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_release_hardware((void *)vfe_dev))
+		return;
+
 	/* when closing node, disable all irq */
 	vfe_dev->irq0_mask = 0;
 	vfe_dev->irq1_mask = 0;
@@ -362,6 +375,10 @@ void msm_vfe47_init_hardware_reg(struct vfe_device *vfe_dev)
 	struct msm_vfe_hw_init_parms vbif_parms;
 	struct msm_vfe_hw_init_parms ds_parms;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_init_hardware_reg((void *)vfe_dev))
+		return;
+
 	memset(&qos_parms, 0, sizeof(struct msm_vfe_hw_init_parms));
 	memset(&vbif_parms, 0, sizeof(struct msm_vfe_hw_init_parms));
 	memset(&ds_parms, 0, sizeof(struct msm_vfe_hw_init_parms));
@@ -393,6 +410,10 @@ void msm_vfe47_init_hardware_reg(struct vfe_device *vfe_dev)
 
 void msm_vfe47_clear_status_reg(struct vfe_device *vfe_dev)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_clear_status_reg((void *)vfe_dev))
+		return;
+
 	msm_vfe47_config_irq(vfe_dev, 0x80000000, 0x0,
 				MSM_ISP_IRQ_SET);
 	msm_camera_io_w(0xFFFFFFFF, vfe_dev->vfe_base + 0x64);
@@ -414,6 +435,10 @@ void msm_vfe47_process_halt_irq(struct vfe_device *vfe_dev,
 {
 	uint32_t val = 0;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	if (irq_status1 & (1 << 8)) {
 		complete(&vfe_dev->halt_complete);
 		msm_camera_io_w(0x0, vfe_dev->vfe_base + 0x400);
@@ -428,6 +453,10 @@ void msm_vfe47_process_input_irq(struct vfe_device *vfe_dev,
 	uint32_t irq_status0, uint32_t irq_status1,
 	struct msm_isp_timestamp *ts)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	if (!(irq_status0 & 0x1000003))
 		return;
 
@@ -530,6 +559,10 @@ void msm_vfe47_process_error_status(struct vfe_device *vfe_dev)
 void msm_vfe47_read_irq_status_and_clear(struct vfe_device *vfe_dev,
 	uint32_t *irq_status0, uint32_t *irq_status1)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	*irq_status0 = msm_camera_io_r(vfe_dev->vfe_base + 0x6C);
 	*irq_status1 = msm_camera_io_r(vfe_dev->vfe_base + 0x70);
 	/* Mask off bits that are not enabled */
@@ -567,6 +600,10 @@ void msm_vfe47_process_reg_update(struct vfe_device *vfe_dev,
 	uint32_t shift_irq;
 	uint8_t reg_updated = 0;
 	unsigned long flags;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	if (!(irq_status0 & 0xF0))
 		return;
@@ -633,6 +670,10 @@ void msm_vfe47_process_epoch_irq(struct vfe_device *vfe_dev,
 	uint32_t irq_status0, uint32_t irq_status1,
 	struct msm_isp_timestamp *ts)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	if (!(irq_status0 & 0xc))
 		return;
 
@@ -681,6 +722,10 @@ void msm_vfe47_reg_update(struct vfe_device *vfe_dev,
 {
 	uint32_t update_mask = 0;
 	unsigned long flags;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	/* This HW supports upto VFE_RAW_2 */
 	if (frame_src > VFE_RAW_2 && frame_src != VFE_SRC_MAX) {
@@ -732,6 +777,12 @@ long msm_vfe47_reset_hardware(struct vfe_device *vfe_dev,
 {
 	long rc = 0;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_reset_hardware((void *)vfe_dev)) {
+		rc = 1; /* Success */
+		return rc;
+	}
+
 	init_completion(&vfe_dev->reset_complete);
 
 	if (blocking_call)
@@ -764,6 +815,10 @@ long msm_vfe47_reset_hardware(struct vfe_device *vfe_dev,
 void msm_vfe47_axi_reload_wm(struct vfe_device *vfe_dev,
 	void __iomem *vfe_base, uint32_t reload_mask)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	msm_camera_io_w_mb(reload_mask, vfe_base + 0x80);
 }
 
@@ -771,6 +826,10 @@ void msm_vfe47_axi_update_cgc_override(struct vfe_device *vfe_dev,
 	uint8_t wm_idx, uint8_t enable)
 {
 	uint32_t val;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	/* Change CGC override */
 	val = msm_camera_io_r(vfe_dev->vfe_base + 0x3C);
@@ -802,6 +861,10 @@ void msm_vfe47_axi_cfg_comp_mask(struct vfe_device *vfe_dev,
 	uint32_t comp_mask, comp_mask_index =
 		stream_info->comp_mask_index;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	comp_mask = msm_camera_io_r(vfe_dev->vfe_base + 0x74);
 	comp_mask &= ~(0x7F << (comp_mask_index * 8));
 	comp_mask |= (axi_data->composite_info[comp_mask_index].
@@ -816,6 +879,10 @@ void msm_vfe47_axi_clear_comp_mask(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info)
 {
 	uint32_t comp_mask, comp_mask_index = stream_info->comp_mask_index;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	comp_mask = msm_camera_io_r(vfe_dev->vfe_base + 0x74);
 	comp_mask &= ~(0x7F << (comp_mask_index * 8));
@@ -841,6 +908,10 @@ void msm_vfe47_axi_clear_wm_irq_mask(struct vfe_device *vfe_dev,
 
 void msm_vfe47_axi_clear_irq_mask(struct vfe_device *vfe_dev)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	msm_camera_io_w_mb(0x0, vfe_dev->vfe_base + 0x5C);
 	msm_camera_io_w_mb(0x0, vfe_dev->vfe_base + 0x60);
 }
@@ -866,6 +937,10 @@ void msm_vfe47_clear_framedrop(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info)
 {
 	uint32_t i;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	for (i = 0; i < stream_info->num_planes; i++)
 		msm_camera_io_w(0, vfe_dev->vfe_base +
@@ -941,6 +1016,10 @@ int32_t msm_vfe47_cfg_io_format(struct vfe_device *vfe_dev,
 	uint32_t bpp_reg = 0, pack_reg = 0;
 	uint32_t read_bpp_reg = 0, read_pack_reg = 0;
 	uint32_t io_format_reg = 0; /*io format register bit*/
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return rc;
 
 	io_format_reg = msm_camera_io_r(vfe_dev->vfe_base + 0x88);
 
@@ -1019,6 +1098,10 @@ int msm_vfe47_start_fetch_engine(struct vfe_device *vfe_dev,
 	struct msm_vfe_fetch_eng_start *fe_cfg = arg;
 	struct msm_isp_buffer_mapped_info mapped_info;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return rc;
+
 	if (vfe_dev->fetch_engine_info.is_busy == 1) {
 		pr_err("%s: fetch engine busy\n", __func__);
 		return -EINVAL;
@@ -1081,6 +1164,10 @@ int msm_vfe47_start_fetch_engine_multi_pass(struct vfe_device *vfe_dev,
 	struct msm_isp_buffer *buf = NULL;
 	struct msm_vfe_fetch_eng_multi_pass_start *fe_cfg = arg;
 	struct msm_isp_buffer_mapped_info mapped_info;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return rc;
 
 	if (vfe_dev->fetch_engine_info.is_busy == 1) {
 		pr_err("%s: fetch engine busy\n", __func__);
@@ -1415,6 +1502,10 @@ void msm_vfe47_cfg_input_mux(struct vfe_device *vfe_dev,
 	uint32_t core_cfg = 0;
 	uint32_t val = 0;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	core_cfg =  msm_camera_io_r(vfe_dev->vfe_base + 0x50);
 	core_cfg &= 0xFFFFFF9F;
 
@@ -1475,6 +1566,10 @@ void msm_vfe47_update_camif_state(struct vfe_device *vfe_dev,
 {
 	uint32_t val;
 	bool bus_en, vfe_en;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	if (update_state == NO_UPDATE)
 		return;
@@ -1539,6 +1634,10 @@ void msm_vfe47_cfg_rdi_reg(
 	uint8_t rdi = input_src - VFE_RAW_0;
 	uint32_t rdi_reg_cfg;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	rdi_reg_cfg = (rdi == 0) ? 0x3 : 0x0;
 
 	rdi_reg_cfg |= (rdi * 3) << 28 | rdi_cfg->cid << 4 | 1 << 2;
@@ -1554,6 +1653,10 @@ void msm_vfe47_axi_cfg_wm_reg(
 	uint32_t val;
 	uint32_t wm_base =
 		VFE47_WM_BASE(stream_info->vfe_plane_cfg[plane_idx].wmIndex);
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	val = msm_camera_io_r(vfe_dev->vfe_base + wm_base + 0x14);
 	val &= ~0x2;
@@ -1592,6 +1695,10 @@ void msm_vfe47_axi_clear_wm_reg(
 	uint32_t wm_base =
 		VFE47_WM_BASE(stream_info->vfe_plane_cfg[plane_idx].wmIndex);
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	/* WR_ADDR_CFG */
 	msm_camera_io_w(val, vfe_dev->vfe_base + wm_base + 0x14);
 	/* WR_IMAGE_SIZE */
@@ -1612,6 +1719,10 @@ void msm_vfe47_axi_cfg_wm_xbar_reg(
 	uint8_t wm = plane_cfg->wmIndex;
 	uint32_t xbar_cfg = 0;
 	uint32_t xbar_reg_cfg = 0;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	switch (stream_info->stream_src) {
 	case PIX_VIDEO:
@@ -1673,6 +1784,10 @@ void msm_vfe47_axi_clear_wm_xbar_reg(
 {
 	uint8_t wm = stream_info->wm[plane_idx];
 	uint32_t xbar_reg_cfg = 0;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	xbar_reg_cfg =
 		msm_camera_io_r(vfe_dev->vfe_base + VFE47_XBAR_BASE(wm));
@@ -1787,6 +1902,10 @@ void msm_vfe47_cfg_axi_ub(struct vfe_device *vfe_dev,
 {
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	axi_data->wm_ub_cfg_policy = UB_CFG_POLICY;
 	if (axi_data->wm_ub_cfg_policy == MSM_WM_UB_EQUAL_SLICING)
 		msm_vfe47_cfg_axi_ub_equal_slicing(vfe_dev);
@@ -1797,6 +1916,10 @@ void msm_vfe47_cfg_axi_ub(struct vfe_device *vfe_dev,
 void msm_vfe47_read_wm_ping_pong_addr(
 	struct vfe_device *vfe_dev)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	msm_camera_io_dump(vfe_dev->vfe_base +
 		(VFE47_WM_BASE(0) & 0xFFFFFFF0), 0x200, 1);
 }
@@ -1832,6 +1955,10 @@ int msm_vfe47_axi_halt(struct vfe_device *vfe_dev,
 	int rc = 0;
 	enum msm_vfe_input_src i;
 	uint32_t val = 0;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return rc;
 
 	val = msm_camera_io_r(vfe_dev->vfe_vbif_base + VFE47_VBIF_CLK_OFFSET);
 	val |= 0x1;
@@ -1900,6 +2027,10 @@ int msm_vfe47_axi_halt(struct vfe_device *vfe_dev,
 int msm_vfe47_axi_restart(struct vfe_device *vfe_dev,
 	uint32_t blocking, uint32_t enable_camif)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return 0;
+
 	msm_camera_io_w(0x7FFFFFFF, vfe_dev->vfe_base + 0x64);
 	msm_camera_io_w(0xFFFFFEFF, vfe_dev->vfe_base + 0x68);
 	msm_camera_io_w(0x1, vfe_dev->vfe_base + 0x58);
@@ -1984,6 +2115,10 @@ void msm_vfe47_stats_cfg_comp_mask(
 	atomic_t *stats_comp_mask;
 	struct msm_vfe_stats_shared_data *stats_data = &vfe_dev->stats_data;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	if (vfe_dev->hw_info->stats_hw_info->num_stats_comp_mask < 1)
 		return;
 
@@ -2037,6 +2172,10 @@ void msm_vfe47_stats_cfg_wm_irq_mask(
 	struct vfe_device *vfe_dev,
 	struct msm_vfe_stats_stream *stream_info)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	switch (STATS_IDX(stream_info->stream_handle)) {
 	case STATS_COMP_IDX_AEC_BG:
 		msm_vfe47_config_irq(vfe_dev, 1 << 15, 0, MSM_ISP_IRQ_ENABLE);
@@ -2077,6 +2216,10 @@ void msm_vfe47_stats_clear_wm_irq_mask(
 	struct msm_vfe_stats_stream *stream_info)
 {
 	uint32_t irq_mask, irq_mask_1;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	irq_mask = vfe_dev->irq0_mask;
 	irq_mask_1 = vfe_dev->irq1_mask;
@@ -2123,6 +2266,10 @@ void msm_vfe47_stats_cfg_wm_reg(
 	int stats_idx = STATS_IDX(stream_info->stream_handle);
 	uint32_t stats_base = VFE47_STATS_BASE(stats_idx);
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	/* WR_ADDR_CFG */
 	msm_camera_io_w(stream_info->framedrop_period << 2,
 		vfe_dev->vfe_base + stats_base + 0x10);
@@ -2141,6 +2288,10 @@ void msm_vfe47_stats_clear_wm_reg(
 	uint32_t val = 0;
 	int stats_idx = STATS_IDX(stream_info->stream_handle);
 	uint32_t stats_base = VFE47_STATS_BASE(stats_idx);
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	/* WR_ADDR_CFG */
 	msm_camera_io_w(val, vfe_dev->vfe_base + stats_base + 0x10);
@@ -2165,6 +2316,9 @@ void msm_vfe47_stats_cfg_ub(struct vfe_device *vfe_dev)
 		16, /* MSM_ISP_STATS_BHIST */
 		16, /* MSM_ISP_STATS_AEC_BG */
 	};
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 	if (vfe_dev->pdev->id == ISP_VFE1)
 		ub_offset = VFE47_UB_SIZE_VFE1;
 	else if (vfe_dev->pdev->id == ISP_VFE0)
@@ -2185,6 +2339,10 @@ void msm_vfe47_stats_update_cgc_override(struct vfe_device *vfe_dev,
 {
 	int i;
 	uint32_t module_cfg, cgc_mask = 0;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	for (i = 0; i < VFE47_NUM_STATS_TYPE; i++) {
 		if ((stats_mask >> i) & 0x1) {
@@ -2243,6 +2401,10 @@ void msm_vfe47_stats_enable_module(struct vfe_device *vfe_dev,
 {
 	int i;
 	uint32_t module_cfg, module_cfg_mask = 0;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 
 	/* BF stats involve DMI cfg, ignore*/
 	for (i = 0; i < VFE47_NUM_STATS_TYPE; i++) {
@@ -2404,7 +2566,11 @@ int msm_vfe47_update_bandwidth(
 
 int msm_vfe47_get_clks(struct vfe_device *vfe_dev)
 {
-	int i, rc;
+	int i, rc = 0;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return rc;
 
 	rc = msm_camera_get_clk_info(vfe_dev->pdev, &vfe_dev->vfe_clk_info,
 			&vfe_dev->vfe_clk, &vfe_dev->num_clk);
@@ -2421,6 +2587,9 @@ int msm_vfe47_get_clks(struct vfe_device *vfe_dev)
 
 void msm_vfe47_put_clks(struct vfe_device *vfe_dev)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
 	msm_camera_put_clk_info(vfe_dev->pdev, &vfe_dev->vfe_clk_info,
 			&vfe_dev->vfe_clk, vfe_dev->num_clk);
 
@@ -2431,6 +2600,12 @@ int msm_vfe47_enable_clks(struct vfe_device *vfe_dev, int enable)
 {
 	unsigned long flags;
 	int rc;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_enable_clks((void *)vfe_dev)) {
+		rc = 0;
+		return rc;
+	}
 
 	if (!enable) {
 		spin_lock_irqsave(&vfe_dev->tasklet_lock, flags);
@@ -2475,6 +2650,10 @@ int msm_vfe47_get_max_clk_rate(struct vfe_device *vfe_dev, long *rate)
 	unsigned long max_value = ~0;
 	long	  round_rate = 0;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return 0;
+
 	if (!vfe_dev || !rate) {
 		pr_err("%s:%d failed: vfe_dev %pK rate %pK\n",
 			__func__, __LINE__, vfe_dev, rate);
@@ -2512,6 +2691,10 @@ int msm_vfe47_get_clk_rates(struct vfe_device *vfe_dev,
 	struct device_node *of_node;
 	int32_t  rc = 0;
 	uint32_t svs = 0, nominal = 0, turbo = 0;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return 0;
 
 	if (!vfe_dev || !rates) {
 		pr_err("%s:%d failed: vfe_dev %pK rates %pK\n", __func__,
@@ -2565,6 +2748,10 @@ void msm_vfe47_put_regulators(struct vfe_device *vfe_dev)
 {
 	int i;
 
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return;
+
 	for (i = 0; i < vfe_dev->vfe_num_regulators; i++)
 		regulator_put(vfe_dev->regulator_info[i].vdd);
 
@@ -2577,6 +2764,10 @@ int msm_vfe47_get_regulators(struct vfe_device *vfe_dev)
 {
 	int rc = 0;
 	int i;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return rc;
 
 	vfe_dev->vfe_num_regulators = vfe_dev->hw_info->regulator_num;
 
@@ -2608,6 +2799,10 @@ reg_get_fail:
 
 int msm_vfe47_enable_regulators(struct vfe_device *vfe_dev, int enable)
 {
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_enable_regulators((void *)vfe_dev))
+		return 0;
+
 	return msm_camera_regulator_enable(vfe_dev->regulator_info,
 					vfe_dev->vfe_num_regulators, enable);
 }
@@ -2615,6 +2810,10 @@ int msm_vfe47_enable_regulators(struct vfe_device *vfe_dev, int enable)
 int msm_vfe47_get_platform_data(struct vfe_device *vfe_dev)
 {
 	int rc = 0;
+
+	/* Call LK hand-off driver */
+	if (msm_lk_handoff_vfe47_process_ops((void *)vfe_dev))
+		return rc;
 
 	vfe_dev->vfe_base = msm_camera_get_reg_base(vfe_dev->pdev, "vfe", 0);
 	if (!vfe_dev->vfe_base)

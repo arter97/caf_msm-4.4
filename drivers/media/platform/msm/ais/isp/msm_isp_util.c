@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,6 +24,7 @@
 #define CREATE_TRACE_POINTS
 #include "trace/events/msm_cam.h"
 #include "sensor/cci/msm_early_cam.h"
+#include "msm_lk_handoff_mgr/msm_early_cam_handoff.h"
 
 #define MAX_ISP_V4l2_EVENTS 100
 #define MAX_ISP_REG_LIST 100
@@ -2291,8 +2292,14 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	vfe_dev->isp_raw1_debug = 0;
 	vfe_dev->isp_raw2_debug = 0;
 
-	/* Postpone hardware changes until early camera is complete */
-	msm_early_camera_wait();
+	/* Initialize LK handoff driver */
+	msm_init_lk_handoff_driver();
+
+	/* LK handoff driver is incorrect state, Postpone
+	 * hardware changes until early camera is complete
+	 */
+	if (!msm_lk_handoff_get_lk_status(true))
+		msm_early_camera_wait();
 
 	if (vfe_dev->hw_info->vfe_ops.core_ops.init_hw(vfe_dev) < 0) {
 		pr_err("%s: init hardware failed\n", __func__);

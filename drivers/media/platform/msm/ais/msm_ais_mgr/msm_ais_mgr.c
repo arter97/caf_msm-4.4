@@ -1,4 +1,4 @@
-/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,6 +17,7 @@
 #include "msm_early_cam.h"
 #include "msm_camera_diag_util.h"
 #include "msm_diag_cam.h"
+#include "msm_lk_handoff_mgr/msm_early_cam_handoff.h"
 
 #undef CDBG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
@@ -102,6 +103,40 @@ static long msm_ais_hndl_ext_ioctl(struct v4l2_subdev *sd, void *arg)
 	return rc;
 }
 
+static long msm_ais_hndl_lk_cfg(struct v4l2_subdev *sd, void *arg)
+{
+	long rc = 0;
+	struct lk_cam_mgr_cfg_data *pdata = (struct lk_cam_mgr_cfg_data *)arg;
+	struct msm_ais_mngr_device *ais_mngr_dev =
+		(struct msm_ais_mngr_device *)v4l2_get_subdevdata(sd);
+	bool cached = false;
+
+	if (WARN_ON(!ais_mngr_dev) || WARN_ON(!pdata)) {
+		rc = -EINVAL;
+		return rc;
+	}
+
+	mutex_lock(&ais_mngr_dev->cont_mutex);
+	CDBG(pr_fmt("cfg_type = %d\n"), pdata->cfg_type);
+	switch (pdata->cfg_type) {
+	case AIS_GET_LK_STATUS:
+		pdata->lk_status = (int)msm_lk_handoff_get_lk_status(cached);
+		break;
+	case AIS_KILL_LK_CAMERA:
+		msm_lk_handoff_kill_lk_camera();
+		break;
+	default:
+		pr_err("invalid cfg_type\n");
+		rc = -EINVAL;
+	}
+
+	if (rc)
+		pr_err("msm_ais_hndl_lk_cfg failed %ld\n", rc);
+
+	mutex_unlock(&ais_mngr_dev->cont_mutex);
+	return rc;
+}
+
 static long msm_ais_mngr_subdev_ioctl(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg)
 {
@@ -118,6 +153,11 @@ static long msm_ais_mngr_subdev_ioctl(struct v4l2_subdev *sd,
 		rc = msm_ais_hndl_ext_ioctl(sd, arg);
 		if (rc)
 			pr_err("msm_ais_hndl_ext_ioctl failed\n");
+		break;
+	case VIDIOC_MSM_AIS_LK_CFG:
+		rc = msm_ais_hndl_lk_cfg(sd, arg);
+		if (rc)
+			pr_err("msm_ais_hndl_lk_cfg failed\n");
 		break;
 	default:
 		rc = -ENOIOCTLCMD;
