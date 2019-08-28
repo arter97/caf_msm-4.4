@@ -169,10 +169,12 @@ static inline int _sspp_subblk_offset(struct sde_hw_pipe *ctx,
 		u32 *idx)
 {
 	int rc = 0;
-	const struct sde_sspp_sub_blks *sblk = ctx->cap->sblk;
+	const struct sde_sspp_sub_blks *sblk;
 
-	if (!ctx)
+	if (!ctx && !ctx->cap && !ctx->cap->sblk)
 		return -EINVAL;
+
+	sblk = ctx->cap->sblk;
 
 	switch (s_id) {
 	case SDE_SSPP_SRC:
