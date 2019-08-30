@@ -268,6 +268,8 @@ struct dwc3_msm {
 	struct delayed_work sdp_check;
 	bool usb_compliance_mode;
 	struct mutex suspend_resume_mutex;
+
+	bool core_init_failed;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -1936,12 +1938,20 @@ static void dwc3_msm_power_collapse_por(struct dwc3_msm *mdwc)
 		ret = dwc3_core_pre_init(dwc);
 		if (ret) {
 			dev_err(mdwc->dev, "dwc3_core_pre_init failed\n");
+			mdwc->core_init_failed = true;
 			return;
 		}
 		mdwc->init = true;
 	}
 
-	dwc3_core_init(dwc);
+	ret = dwc3_core_init(dwc);
+	if (ret) {
+		dev_err(mdwc->dev, "dwc3_core_init failed\n");
+		mdwc->core_init_failed = true;
+		return;
+	}
+
+	mdwc->core_init_failed = false;
 	/* Re-configure event buffers */
 	dwc3_event_buffers_setup(dwc);
 
@@ -3543,6 +3553,12 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
 
 		pm_runtime_get_sync(mdwc->dev);
+		if (mdwc->core_init_failed) {
+			dev_err(mdwc->dev, "%s: Core init failed\n", __func__);
+			pm_runtime_put_sync_suspend(mdwc->dev);
+			return -EAGAIN;
+		}
+
 		mdwc->hs_phy->flags |= PHY_HOST_MODE;
 		if (dwc->maximum_speed == USB_SPEED_SUPER) {
 			mdwc->ss_phy->flags |= PHY_HOST_MODE;
@@ -4000,6 +4016,10 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				delay = VBUS_REG_CHECK_DELAY;
 				work = 1;
 				mdwc->vbus_retry_count++;
+			} else if (ret == -EAGAIN) {
+				mdwc->drd_state = DRD_STATE_HOST_IDLE;
+				dev_dbg(mdwc->dev, "Core init failed. Retrying...\n");
+				work = 1;
 			} else if (ret) {
 				dev_err(mdwc->dev, "unable to start host\n");
 				mdwc->drd_state = DRD_STATE_HOST_IDLE;
