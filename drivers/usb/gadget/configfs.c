@@ -93,6 +93,8 @@ struct gadget_info {
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
 	bool connected;
 	bool sw_connected;
+	bool suspended;
+	bool sw_suspended;
 	struct work_struct work;
 	struct device *dev;
 #endif
@@ -1425,14 +1427,25 @@ static void android_work(struct work_struct *data)
 	char *disconnected[2] = { "USB_STATE=DISCONNECTED", NULL };
 	char *connected[2]    = { "USB_STATE=CONNECTED", NULL };
 	char *configured[2]   = { "USB_STATE=CONFIGURED", NULL };
-	/* 0-connected 1-configured 2-disconnected*/
-	bool status[3] = { false, false, false };
+	char *suspended[2]    = { "USB_STATE=SUSPENDED", NULL };
+	char *resumed[2]      = { "USB_STATE=RESUMED", NULL };
+	/* 0-connected 1-configured 2-disconnected 3-suspended 4-resumed */
+	bool status[5] = { false, false, false, false, false };
 	unsigned long flags;
 	bool uevent_sent = false;
 
 	spin_lock_irqsave(&cdev->lock, flags);
-	if (cdev->config)
-		status[1] = true;
+	if (cdev->config) {
+		if (gi->suspended != gi->sw_suspended) {
+			if (gi->suspended)
+				status[3] = true;
+			else
+				status[4] = true;
+			gi->sw_suspended = gi->suspended;
+		} else {
+			status[1] = true;
+		}
+	}
 
 	if (gi->connected != gi->sw_connected) {
 		if (gi->connected)
@@ -1440,6 +1453,7 @@ static void android_work(struct work_struct *data)
 		else
 			status[2] = true;
 		gi->sw_connected = gi->connected;
+		gi->suspended = gi->sw_suspended = false;
 	}
 	spin_unlock_irqrestore(&cdev->lock, flags);
 
@@ -1461,6 +1475,20 @@ static void android_work(struct work_struct *data)
 		kobject_uevent_env(&gi->dev->kobj,
 					KOBJ_CHANGE, disconnected);
 		pr_info("%s: sent uevent %s\n", __func__, disconnected[0]);
+		uevent_sent = true;
+	}
+
+	if (status[3]) {
+		kobject_uevent_env(&gi->dev->kobj,
+					KOBJ_CHANGE, suspended);
+		pr_info("%s: sent uevent %s\n", __func__, suspended[0]);
+		uevent_sent = true;
+	}
+
+	if (status[4]) {
+		kobject_uevent_env(&gi->dev->kobj,
+					KOBJ_CHANGE, resumed);
+		pr_info("%s: sent uevent %s\n", __func__, resumed[0]);
 		uevent_sent = true;
 	}
 
@@ -1569,6 +1597,27 @@ static void android_disconnect(struct usb_gadget *gadget)
 		schedule_work(&gi->work);
 	composite_disconnect(gadget);
 }
+
+static void android_suspend(struct usb_composite_dev *cdev)
+{
+	struct gadget_info *gi = container_of(cdev, struct gadget_info, cdev);
+
+	if (!gi->suspended) {
+		gi->suspended = true;
+		schedule_work(&gi->work);
+	}
+}
+
+static void android_resume(struct usb_composite_dev *cdev)
+{
+	struct gadget_info *gi = container_of(cdev, struct gadget_info, cdev);
+
+	if (gi->suspended) {
+		gi->suspended = false;
+		schedule_work(&gi->work);
+	}
+}
+
 #endif
 
 static const struct usb_gadget_driver configfs_driver_template = {
@@ -1707,8 +1756,10 @@ static struct config_group *gadgets_make(
 
 	gi->composite.bind = configfs_do_nothing;
 	gi->composite.unbind = configfs_do_nothing;
-	gi->composite.suspend = NULL;
-	gi->composite.resume = NULL;
+#ifdef CONFIG_USB_CONFIGFS_UEVENT
+	gi->composite.suspend = android_suspend;
+	gi->composite.resume = android_resume;
+#endif
 	gi->composite.max_speed = USB_SPEED_SUPER;
 
 	mutex_init(&gi->lock);
