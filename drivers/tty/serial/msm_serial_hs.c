@@ -3046,6 +3046,8 @@ static int msm_hs_sps_init_ep_conn(struct msm_hs_port *msm_uport,
 		sps_config->src_pipe_index = msm_uport->bam_rx_ep_pipe_index;
 		sps_config->dest_pipe_index = 0;
 		sps_event->callback = msm_hs_sps_rx_callback;
+		sps_pipe_reset(msm_uport->bam_handle,
+				sps_config->src_pipe_index);
 	} else {
 		/* For UART consumer transfer, source is system memory
 		where as destination is UART peripheral */
@@ -3055,6 +3057,8 @@ static int msm_hs_sps_init_ep_conn(struct msm_hs_port *msm_uport,
 		sps_config->src_pipe_index = 0;
 		sps_config->dest_pipe_index = msm_uport->bam_tx_ep_pipe_index;
 		sps_event->callback = msm_hs_sps_tx_callback;
+		sps_pipe_reset(msm_uport->bam_handle,
+				sps_config->dest_pipe_index);
 	}
 
 	sps_config->options = SPS_O_EOT | SPS_O_DESC_DONE | SPS_O_AUTO_ENABLE;
