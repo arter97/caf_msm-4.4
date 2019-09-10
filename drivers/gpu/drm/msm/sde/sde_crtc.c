@@ -823,7 +823,8 @@ static void sde_crtc_atomic_begin(struct drm_crtc *crtc,
 		return;
 
 	_sde_crtc_blend_setup(crtc);
-	sde_cp_crtc_apply_properties(crtc);
+	if (sde_crtc->enabled)
+		sde_cp_crtc_apply_properties(crtc);
 
 	/*
 	 * PP_DONE irq is only used by command mode for now.
