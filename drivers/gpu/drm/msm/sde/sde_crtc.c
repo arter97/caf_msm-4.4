@@ -1085,14 +1085,6 @@ static void _sde_crtc_set_suspend(struct drm_crtc *crtc, bool enable)
 	mutex_lock(&sde_crtc->crtc_lock);
 
 	/*
-	 * Update CP on suspend/resume transitions
-	 */
-	if (enable && !sde_crtc->suspend)
-		sde_cp_crtc_suspend(crtc);
-	else if (!enable && sde_crtc->suspend)
-		sde_cp_crtc_resume(crtc);
-
-	/*
 	 * If the vblank refcount != 0, release a power reference on suspend
 	 * and take it back during resume (if it is still != 0).
 	 */
@@ -1213,6 +1205,9 @@ static void sde_crtc_disable(struct drm_crtc *crtc)
 	SDE_EVT32(DRMID(crtc), sde_crtc->enabled, sde_crtc->suspend,
 			sde_crtc->vblank_requested);
 
+	/* update color processing on suspend */
+	sde_cp_crtc_suspend(crtc);
+
 	if (sde_crtc->enabled && !sde_crtc->suspend &&
 			sde_crtc->vblank_requested) {
 		ret = _sde_crtc_vblank_enable_no_lock(sde_crtc, false);
@@ -1297,6 +1292,8 @@ static void sde_crtc_enable(struct drm_crtc *crtc)
 				sde_crtc->name, ret);
 	}
 	sde_crtc->enabled = true;
+	/* update color processing on resume */
+	sde_cp_crtc_resume(crtc);
 	mutex_unlock(&sde_crtc->crtc_lock);
 
 	for (i = 0; i < sde_crtc->num_mixers; i++) {
