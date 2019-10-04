@@ -1296,6 +1296,7 @@ static void cpu_clock_8996_pro_fixup(void)
 }
 
 static int perfclspeedbin;
+static bool skip_speed_bin_check;
 
 unsigned long pwrcl_early_boot_rate = 883200000;
 unsigned long perfcl_early_boot_rate = 883200000;
@@ -1307,7 +1308,7 @@ static int cpu_clock_8996_driver_probe(struct platform_device *pdev)
 	int ret, cpu;
 	unsigned long pwrclrate, perfclrate, cbfrate;
 	int pvs_ver = 0;
-	u32 pte_efuse;
+	u32 pte_efuse = 0;
 	u32 clk_rate;
 	char perfclspeedbinstr[] = "qcom,perfcl-speedbinXX-vXX";
 	char pwrclspeedbinstr[] = "qcom,pwrcl-speedbinXX-vXX";
@@ -1325,7 +1326,8 @@ static int cpu_clock_8996_driver_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	pte_efuse = readl_relaxed(vbases[EFUSE_BASE]);
+	if (!skip_speed_bin_check)
+		pte_efuse = readl_relaxed(vbases[EFUSE_BASE]);
 	perfclspeedbin = ((pte_efuse >> EFUSE_SHIFT) & EFUSE_MASK);
 	dev_info(&pdev->dev, "using perf/pwr/cbf speed bin %u and pvs_ver %d\n",
 		 perfclspeedbin, pvs_ver);
@@ -1559,6 +1561,7 @@ int __init cpu_clock_8996_early_init(void)
 		cpu_clocks_pro = true;
 		pwrcl_early_boot_rate = PWRCL_EARLY_BOOT_RATE;
 		perfcl_early_boot_rate = PERFCL_EARLY_BOOT_RATE;
+		skip_speed_bin_check = true;
 	} else if (of_find_compatible_node(NULL, NULL,
 					 "qcom,cpu-clock-8996-v3")) {
 		cpu_clocks_v3 = true;
