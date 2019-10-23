@@ -3626,7 +3626,8 @@ static int msm_ec_ref_ch_put(struct snd_kcontrol *kcontrol,
 }
 
 static const char *const ec_ref_ch_text[] = {"Zero", "One", "Two", "Three",
-	"Four", "Five", "Six", "Seven", "Eight"};
+	"Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven",
+	"Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen"};
 
 static int msm_ec_ref_bit_format_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
@@ -3731,7 +3732,7 @@ static const char *const ec_ref_rate_text[] = {"0", "8000", "16000",
 	"32000", "44100", "48000", "96000", "192000", "384000"};
 
 static const struct soc_enum msm_route_ec_ref_params_enum[] = {
-	SOC_ENUM_SINGLE_EXT(9, ec_ref_ch_text),
+	SOC_ENUM_SINGLE_EXT(17, ec_ref_ch_text),
 	SOC_ENUM_SINGLE_EXT(3, ec_ref_bit_format_text),
 	SOC_ENUM_SINGLE_EXT(9, ec_ref_rate_text),
 };
