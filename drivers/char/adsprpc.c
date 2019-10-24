@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -235,10 +235,10 @@ struct fastrpc_channel_ctx {
 	struct notifier_block nb;
 	struct kref kref;
 	int channel;
-	int sesscount;
-	int ssrcount;
+	uint64_t sesscount;
+	uint64_t ssrcount;
 	void *handle;
-	int prevssrcount;
+	uint64_t prevssrcount;
 	int issubsystemup;
 	int vmid;
 	int heap_vmid;
@@ -313,7 +313,7 @@ struct fastrpc_file {
 	uint32_t profile;
 	int tgid;
 	int cid;
-	int ssrcount;
+	uint64_t ssrcount;
 	int pd;
 	int file_close;
 	struct fastrpc_apps *apps;
@@ -2395,7 +2395,8 @@ static int fastrpc_session_alloc_locked(struct fastrpc_channel_ctx *chan,
 			int secure, struct fastrpc_session_ctx **session)
 {
 	struct fastrpc_apps *me = &gfa;
-	int idx = 0, err = 0;
+	uint64_t idx = 0;
+	int err = 0;
 
 	if (chan->sesscount) {
 		for (idx = 0; idx < chan->sesscount; ++idx) {
@@ -2733,14 +2734,14 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 				 DEBUGFS_SIZE - len, "|%-9d",
 				 chan->kref.refcount.counter);
 			len += scnprintf(fileinfo + len,
-				 DEBUGFS_SIZE - len, "|%-9d",
-				 chan->sesscount);
+				DEBUGFS_SIZE - len, "|0x%-10x",
+				(unsigned int)chan->sesscount);
 			len += scnprintf(fileinfo + len,
 				 DEBUGFS_SIZE - len, "|%-14d",
 				 chan->issubsystemup);
 			len += scnprintf(fileinfo + len,
-				 DEBUGFS_SIZE - len, "|%-9d",
-				 chan->ssrcount);
+				DEBUGFS_SIZE - len, "|0x%-9x",
+				(unsigned int)chan->ssrcount);
 			for (j = 0; j < chan->sesscount; j++) {
 				sess_used += chan->session[j].used;
 				}
@@ -2794,7 +2795,8 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
 			"%s %12s %d\n", "tgid", ":", fl->tgid);
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
-			"%s %8s %d\n", "ssrcount", ":", fl->ssrcount);
+			"%s %8s 0x%x n", "ssrcount", ":",
+				(unsigned int)fl->ssrcount);
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
 			"%s %14s %d\n", "pd", ":", fl->pd);
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
