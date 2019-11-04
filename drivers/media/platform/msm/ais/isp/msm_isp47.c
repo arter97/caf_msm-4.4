@@ -1410,8 +1410,8 @@ void msm_vfe47_cfg_camif(struct vfe_device *vfe_dev,
 	first_line = camif_cfg->first_line;
 	last_line = camif_cfg->last_line;
 
-	msm_camera_io_w((camif_cfg->lines_per_frame) << 16 |
-		(camif_cfg->pixels_per_line), vfe_dev->vfe_base + 0x484);
+	msm_camera_io_w((camif_cfg->lines_per_frame - 1) << 16 |
+		(camif_cfg->pixels_per_line - 1), vfe_dev->vfe_base + 0x484);
 	if (bus_sub_en) {
 		val = msm_camera_io_r(vfe_dev->vfe_base + 0x47C);
 		val &= 0xFFFFFFDF;
