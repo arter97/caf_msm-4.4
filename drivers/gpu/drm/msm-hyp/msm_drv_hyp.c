@@ -456,7 +456,7 @@ static struct platform_driver msm_platform_driver = {
 	.id_table   = msm_id,
 };
 
-static int __init msm_drm_register(void)
+int __init msm_drm_register(void)
 {
 	DBG("init");
 	return platform_driver_register(&msm_platform_driver);
@@ -468,7 +468,7 @@ static void __exit msm_drm_unregister(void)
 	platform_driver_unregister(&msm_platform_driver);
 }
 
-module_init(msm_drm_register);
+//module_init(msm_drm_register);
 module_exit(msm_drm_unregister);
 
 MODULE_DESCRIPTION("MSM DRM Mini Driver");

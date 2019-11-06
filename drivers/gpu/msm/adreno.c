@@ -2909,7 +2909,7 @@ static struct platform_driver kgsl_bus_platform_driver = {
 	}
 };
 
-static int __init kgsl_3d_init(void)
+int __init kgsl_3d_init(void)
 {
 	int ret;
 
@@ -2930,7 +2930,7 @@ static void __exit kgsl_3d_exit(void)
 	platform_driver_unregister(&kgsl_bus_platform_driver);
 }
 
-module_init(kgsl_3d_init);
+//module_init(kgsl_3d_init);
 module_exit(kgsl_3d_exit);
 
 MODULE_DESCRIPTION("3D Graphics driver");

@@ -420,7 +420,7 @@ static struct platform_driver msm_platform_driver = {
 	.id_table   = msm_edrm_id,
 };
 
-static int __init msm_edrm_register(void)
+int __init msm_edrm_register(void)
 {
 	DBG("init");
 	return platform_driver_register(&msm_platform_driver);
@@ -432,8 +432,15 @@ static void __exit msm_edrm_unregister(void)
 	platform_driver_unregister(&msm_platform_driver);
 }
 
-module_init(msm_edrm_register);
+static int __init msm_edrm_late_register(void)
+{
+	pr_debug("wait for eDRM display probe completion\n");
+	return 0;
+}
+//module_init(msm_edrm_register);
 module_exit(msm_edrm_unregister);
+/* init level 7 */
+late_initcall(msm_edrm_late_register);
 
 MODULE_DESCRIPTION("MSM EARLY DRM Driver");
 MODULE_LICENSE("GPL v2");

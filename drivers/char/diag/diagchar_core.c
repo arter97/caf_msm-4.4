@@ -3844,7 +3844,7 @@ static struct platform_driver diagfwd_usb_driver = {
 	},
 };
 
-static int __init diagchar_init(void)
+int __init diagchar_init(void)
 {
 	dev_t dev;
 	int error, ret, i;
@@ -4004,5 +4004,5 @@ static void diagchar_exit(void)
 	printk(KERN_INFO "done diagchar exit\n");
 }
 
-module_init(diagchar_init);
+//module_init(diagchar_init);
 module_exit(diagchar_exit);

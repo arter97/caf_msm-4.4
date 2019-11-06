@@ -4969,7 +4969,7 @@ static void kgsl_core_exit(void)
 	unregister_chrdev_region(kgsl_driver.major, KGSL_DEVICE_MAX);
 }
 
-static int __init kgsl_core_init(void)
+int __init kgsl_core_init(void)
 {
 	int result = 0;
 	struct sched_param param = { .sched_priority = 2 };
@@ -5066,7 +5066,7 @@ err:
 	return result;
 }
 
-module_init(kgsl_core_init);
+//module_init(kgsl_core_init);
 module_exit(kgsl_core_exit);
 
 MODULE_AUTHOR("Qualcomm Innovation Center, Inc.");
