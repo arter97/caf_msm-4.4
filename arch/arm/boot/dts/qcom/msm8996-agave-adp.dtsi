@@ -962,31 +962,6 @@
 				<100 512 207108 14432000>;
 	};
 
-	i2c@75ba000 {
-		synaptics@20 {
-			compatible = "synaptics,dsx";
-			reg = <0x20>;
-			interrupt-parent = <&tlmm>;
-			interrupts = <125 0x2008>;
-			vdd-supply = <&pm8994_l14>;
-			avdd-supply = <&pm8994_l22>;
-			pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
-			pinctrl-0 = <&ts_active>;
-			pinctrl-1 = <&ts_suspend>;
-			synaptics,display-coords = <0 0 1599 2559>;
-			synaptics,panel-coords = <0 0 1599 2703>;
-			synaptics,reset-gpio = <&tlmm 89 0x00>;
-			synaptics,irq-gpio = <&tlmm 125 0x2008>;
-			synaptics,disable-gpios;
-			synaptics,fw-name = "PR1702898-s3528t_00350002.img";
-			/* Underlying clocks used by secure touch */
-			clock-names = "iface_clk", "core_clk";
-			clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
-				 <&clock_gcc clk_gcc_blsp2_qup6_i2c_apps_clk>;
-			status = "disabled";
-		};
-	};
-
 	i2c@75b6000 { /* BLSP8 */
 		/* ADV7533 configuration */
 		adv7533@3d {
@@ -1052,14 +1027,6 @@
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
-	};
-
-	sound-9335 {
-		status = "disabled";
-	};
-
-	ssc_sensors: qcom,msm-ssc-sensors {
-		status = "disabled";
 	};
 
 	sound-adp-agave {
@@ -1166,26 +1133,6 @@
 			qcom,msm-cpudai-tdm-dev-id = <36906>;
 			qcom,msm-cpudai-tdm-data-align = <0>;
 		};
-	};
-
-	qcom,msm-ext-anc {
-		compatible = "qcom,msm-ext-anc";
-		qcom,refs-port-id = <36906>;
-		qcom,spkr-port-id = <36912>;
-		qcom,mic-port-id = <36913>;
-		qcom,sample-rate = <48000>;
-		qcom,num-channels = <8>;
-		qcom,bit-width = <32>;
-		qcom,num-anc-mic = <4>;
-		qcom,num-add-mic-signal = <0>;
-		qcom,anc-mic-array = <0 1 2 3>;
-		qcom,num-anc-spkr = <4>;
-		qcom,num-add-spkr-signal = <0>;
-		qcom,anc-spkr-array = <0 1 2 3>;
-		qcom,refs-tdm-rx = <&dai_tert_tdm_rx_5>;
-		qcom,spkr-tdm-rx = <&dai_quat_tdm_rx_0>;
-		qcom,mic-tdm-tx = <&dai_quat_tdm_tx_0>;
-		status = "disabled";
 	};
 
 	usb_detect: usb_detect {
@@ -1479,56 +1426,6 @@
 	};
 };
 
-&i2c_7 {
-	silabs4705@11 { /* SiLabs FM chip, slave id 0x11*/
-		status = "ok";
-		compatible = "silabs,si4705";
-		reg = <0x11>;
-		vdd-supply = <&pm8994_s4>;
-		silabs,vdd-supply-voltage = <1800000 1800000>;
-		va-supply = <&rome_vreg>;
-		silabs,va-supply-voltage = <3300000 3300000>;
-		pinctrl-names = "pmx_fm_active","pmx_fm_suspend";
-		pinctrl-0 = <&fm_int_active &fm_status_int_active
-						 &fm_rst_active>;
-		pinctrl-1 = <&fm_int_suspend &fm_status_int_suspend
-						&fm_rst_suspend>;
-		silabs,reset-gpio = <&tlmm 39 0>;
-		silabs,int-gpio = <&tlmm 38 0>;
-		silabs,status-gpio = <&tlmm 78 0>;
-		#address-cells = <0>;
-		interrupts = <0 1>;
-		#interrupt-cells = <1>;
-		interrupt-map-mask = <0xffffffff>;
-		interrupt-map = <
-				  0 &tlmm 38 2
-				  1 &tlmm 78 1
-				>;
-		interrupt-names = "silabs_fm_int", "silabs_fm_status_int";
-	};
-};
-
-&i2c_8 { /* BLSP2 QUP2 */
-	nq@28 {
-		compatible = "qcom,nq-nci";
-		reg = <0x28>;
-		qcom,nq-irq = <&tlmm 9 0x00>;
-		qcom,nq-ven = <&tlmm 12 0x00>;
-		qcom,nq-firm = <&pm8994_gpios 7 0x00>;
-		qcom,nq-clkreq = <&pm8994_gpios 10 0x00>;
-		interrupt-parent = <&tlmm>;
-		qcom,clk-src = "BBCLK2";
-		interrupts = <9 0>;
-		interrupt-names = "nfc_irq";
-		pinctrl-names = "nfc_active", "nfc_suspend";
-		pinctrl-0 = <&nfc_int_active &nfc_disable_active>;
-		pinctrl-1 = <&nfc_int_suspend &nfc_disable_suspend>;
-		clocks = <&clock_gcc clk_bb_clk2_pin>;
-		clock-names = "ref_clk";
-		status = "disabled";
-	};
-};
-
 &dsi_dual_jdi_video {
 	/delete-property/ pwms;
 	/delete-property/ qcom,5v-boost-gpio;
@@ -1541,16 +1438,6 @@
 
 &dsi_dual_jdi_4k_nofbc_video {
 	/delete-property/ pwms;
-};
-
-&soc {
-	sound-9335 {
-		/delete-property/ qcom,hph-en1-gpio;
-	};
-};
-
-&slim_msm {
-	status = "disabled";
 };
 
 /delete-node/ &led_flash0;
@@ -1578,22 +1465,6 @@
 	enable-active-high;
 	status = "ok";
 	/delete-property/ vin-supply;
-};
-
-&wsa881x_211 {
-	/delete-property/ qcom,spkr-sd-n-gpio;
-};
-
-&wsa881x_212 {
-	/delete-property/ qcom,spkr-sd-n-gpio;
-};
-
-&wsa881x_213 {
-	/delete-property/ qcom,spkr-sd-n-gpio;
-};
-
-&wsa881x_214 {
-	/delete-property/ qcom,spkr-sd-n-gpio;
 };
 
 &spi_9 {

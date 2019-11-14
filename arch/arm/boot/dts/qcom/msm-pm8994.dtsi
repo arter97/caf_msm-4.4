@@ -83,21 +83,9 @@
 			#size-cells = <1>;
 			label = "pm8994-gpio";
 
-			gpio@c000 {
-				reg = <0xc000 0x100>;
-				qcom,pin-num = <1>;
-				status = "disabled";
-			};
-
 			gpio@c100 {
 				reg = <0xc100 0x100>;
 				qcom,pin-num = <2>;
-				status = "disabled";
-			};
-
-			gpio@c200 {
-				reg = <0xc200 0x100>;
-				qcom,pin-num = <3>;
 				status = "disabled";
 			};
 
@@ -149,12 +137,6 @@
 				status = "disabled";
 			};
 
-			gpio@cb00 {
-				reg = <0xcb00 0x100>;
-				qcom,pin-num = <12>;
-				status = "disabled";
-			};
-
 			gpio@cc00 {
 				reg = <0xcc00 0x100>;
 				qcom,pin-num = <13>;
@@ -170,12 +152,6 @@
 			gpio@ce00 {
 				reg = <0xce00 0x100>;
 				qcom,pin-num = <15>;
-				status = "disabled";
-			};
-
-			gpio@cf00 {
-				reg = <0xcf00 0x100>;
-				qcom,pin-num = <16>;
 				status = "disabled";
 			};
 
@@ -197,17 +173,6 @@
 				status = "disabled";
 			};
 
-			gpio@d300 {
-				reg = <0xd300 0x100>;
-				qcom,pin-num = <20>;
-				status = "disabled";
-			};
-
-			gpio@d500 {
-				reg = <0xd500 0x100>;
-				qcom,pin-num = <22>;
-				status = "disabled";
-			};
 		};
 
 		pm8994_mpps: mpps {
@@ -218,21 +183,9 @@
 			#size-cells = <1>;
 			label = "pm8994-mpp";
 
-			mpp@a000 {
-				reg = <0xa000 0x100>;
-				qcom,pin-num = <1>;
-				status = "disabled";
-			};
-
 			mpp@a100 {
 				reg = <0xa100 0x100>;
 				qcom,pin-num = <2>;
-				status = "disabled";
-			};
-
-			mpp@a200 {
-				reg = <0xa200 0x100>;
-				qcom,pin-num = <3>;
 				status = "disabled";
 			};
 
@@ -242,29 +195,12 @@
 				status = "disabled";
 			};
 
-			mpp@a400 {
-				reg = <0xa400 0x100>;
-				qcom,pin-num = <5>;
-				status = "disabled";
-			};
-
 			mpp@a500 {
 				reg = <0xa500 0x100>;
 				qcom,pin-num = <6>;
 				status = "disabled";
 			};
 
-			mpp@a600 {
-				reg = <0xa600 0x100>;
-				qcom,pin-num = <7>;
-				status = "disabled";
-			};
-
-			mpp@a700 {
-				reg = <0xa700 0x100>;
-				qcom,pin-num = <8>;
-				status = "disabled";
-			};
 		};
 
 		pm8994_vadc: vadc@3100 {
@@ -355,77 +291,5 @@
 		reg = <0x1 SPMI_USID>;
 		#address-cells = <2>;
 		#size-cells = <0>;
-
-		pwm@b100 {
-			compatible = "qcom,qpnp-pwm";
-			reg = <0xb100 0x100>,
-			      <0xb042 0x7e>;
-			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
-			qcom,channel-id = <0>;
-			qcom,supported-sizes = <6>, <7>, <9>;
-			qcom,ramp-index = <0>;
-			#pwm-cells = <2>;
-			status = "disabled";
-		};
-
-		pwm@b200 {
-			compatible = "qcom,qpnp-pwm";
-			reg = <0xb200 0x100>,
-			      <0xb042 0x7e>;
-			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
-			qcom,channel-id = <1>;
-			qcom,supported-sizes = <6>, <7>, <9>;
-			qcom,ramp-index = <1>;
-			#pwm-cells = <2>;
-			status = "disabled";
-		};
-
-		pwm@b300 {
-			compatible = "qcom,qpnp-pwm";
-			reg = <0xb300 0x100>,
-			      <0xb042 0x7e>;
-			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
-			qcom,channel-id = <2>;
-			qcom,supported-sizes = <6>, <7>, <9>;
-			qcom,ramp-index = <2>;
-			#pwm-cells = <2>;
-			status = "disabled";
-		};
-
-		pwm@b400 {
-			compatible = "qcom,qpnp-pwm";
-			reg = <0xb400 0x100>,
-			      <0xb042 0x7e>;
-			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
-			qcom,channel-id = <3>;
-			qcom,supported-sizes = <6>, <7>, <9>;
-			qcom,ramp-index = <3>;
-			#pwm-cells = <2>;
-			status = "disabled";
-		};
-
-		pwm@b500 {
-			compatible = "qcom,qpnp-pwm";
-			reg = <0xb500 0x100>,
-			      <0xb042 0x7e>;
-			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
-			qcom,channel-id = <4>;
-			qcom,supported-sizes = <6>, <7>, <9>;
-			qcom,ramp-index = <4>;
-			#pwm-cells = <2>;
-			status = "disabled";
-		};
-
-		pwm@b600 {
-			compatible = "qcom,qpnp-pwm";
-			reg = <0xb600 0x100>,
-			      <0xb042 0x7e>;
-			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
-			qcom,channel-id = <5>;
-			qcom,supported-sizes = <6>, <7>, <9>;
-			qcom,ramp-index = <5>;
-			#pwm-cells = <2>;
-			status = "disabled";
-		};
 	};
 };

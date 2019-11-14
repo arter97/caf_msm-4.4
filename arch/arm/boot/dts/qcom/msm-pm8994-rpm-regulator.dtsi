@@ -18,12 +18,6 @@
 		qcom,regulator-type = <1>;
 		status = "disabled";
 
-		regulator-s1 {
-			compatible = "qcom,rpm-smd-regulator";
-			regulator-name = "pm8994_s1";
-			qcom,set = <3>;
-			status = "disabled";
-		};
 	};
 
 	rpm-regulator-smpa2 {
@@ -33,12 +27,6 @@
 		qcom,regulator-type = <1>;
 		status = "disabled";
 
-		regulator-s2 {
-			compatible = "qcom,rpm-smd-regulator";
-			regulator-name = "pm8994_s2";
-			qcom,set = <3>;
-			status = "disabled";
-		};
 	};
 
 	rpm-regulator-smpa3 {
@@ -596,21 +584,6 @@
 		};
 	};
 
-	rpm-regulator-smpb2 {
-		compatible = "qcom,rpm-smd-regulator-resource";
-		qcom,resource-name = "smpb";
-		qcom,resource-id = <2>;
-		qcom,regulator-type = <1>;
-		status = "disabled";
-
-		regulator-s2 {
-			compatible = "qcom,rpm-smd-regulator";
-			regulator-name = "pmi8994_s2";
-			qcom,set = <3>;
-			status = "disabled";
-		};
-	};
-
 	rpm-regulator-bstb {
 		compatible = "qcom,rpm-smd-regulator-resource";
 		qcom,resource-name = "bstb";
@@ -641,18 +614,4 @@
 		};
 	};
 
-	rpm-regulator-smpc2 {
-		compatible = "qcom,rpm-smd-regulator-resource";
-		qcom,resource-name = "smpc";
-		qcom,resource-id = <2>;
-		qcom,regulator-type = <1>;
-		status = "disabled";
-
-		regulator-s2 {
-			compatible = "qcom,rpm-smd-regulator";
-			regulator-name = "pm8004_s2";
-			qcom,set = <3>;
-			status = "disabled";
-		};
-	};
 };
