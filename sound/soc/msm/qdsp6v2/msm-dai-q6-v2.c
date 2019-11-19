@@ -1548,7 +1548,12 @@ static int msm_dai_q6_cdc_hw_params(struct snd_pcm_hw_params *params,
 	dai_data->channels = params_channels(params);
 	switch (dai_data->channels) {
 	case 2:
-		dai_data->port_config.i2s.mono_stereo = MSM_AFE_STEREO;
+		if(dai->id == AUDIO_PORT_ID_I2S_RX) {
+		   dai_data->port_config.i2s.mono_stereo = AFE_PORT_I2S_STEREO;
+		}
+		else {
+		   dai_data->port_config.i2s.mono_stereo = MSM_AFE_STEREO;
+		}
 		break;
 	case 1:
 		dai_data->port_config.i2s.mono_stereo = MSM_AFE_MONO;
@@ -1828,6 +1833,7 @@ static int msm_dai_q6_hw_params(struct snd_pcm_substream *substream,
 	case PRIMARY_I2S_TX:
 	case PRIMARY_I2S_RX:
 	case SECONDARY_I2S_RX:
+	case AUDIO_PORT_ID_I2S_RX:
 		rc = msm_dai_q6_cdc_hw_params(params, dai, substream->stream);
 		break;
 	case MI2S_RX:
@@ -1937,6 +1943,7 @@ static int msm_dai_q6_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	case PRIMARY_I2S_RX:
 	case MI2S_RX:
 	case SECONDARY_I2S_RX:
+	case AUDIO_PORT_ID_I2S_RX:
 		rc = msm_dai_q6_cdc_set_fmt(dai, fmt);
 		break;
 	default:
@@ -2626,6 +2633,26 @@ static int msm_dai_q6_dai_remove(struct snd_soc_dai *dai)
 
 	return 0;
 }
+
+
+static struct snd_soc_dai_driver msm_dai_q6_spkr_i2s_rx_dai = {
+		.playback = {
+			.stream_name = "Speaker I2S Playback",
+			.aif_name = "AUDIO_I2S_RX",
+			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
+			SNDRV_PCM_RATE_16000,
+			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+			.channels_min = 1,
+			.channels_max = 4,
+			.rate_min =     8000,
+			.rate_max =     48000,
+		},
+		.ops = &msm_dai_q6_ops,
+		.id = AUDIO_PORT_ID_I2S_RX,
+		.probe = msm_dai_q6_dai_probe,
+		.remove = msm_dai_q6_dai_remove,
+};
+
 
 static struct snd_soc_dai_driver msm_dai_q6_afe_rx_dai[] = {
 	{
@@ -5860,7 +5887,10 @@ register_uplink_capture:
 			pr_err("%s: Device not found stream name %s\n",
 			__func__, stream_name);
 		break;
-
+		case AUDIO_PORT_ID_I2S_RX:
+			rc = snd_soc_register_component(&pdev->dev,
+				&msm_dai_q6_component, &msm_dai_q6_spkr_i2s_rx_dai, 1);
+		break;
 	default:
 		rc = -ENODEV;
 		break;

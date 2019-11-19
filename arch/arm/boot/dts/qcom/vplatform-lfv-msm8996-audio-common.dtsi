@@ -60,7 +60,7 @@
 			<&dai_quat_mi2s_rx_2>, <&dai_quat_mi2s_rx_3>,
 			<&dai_quat_mi2s_rx_4>, <&dai_quat_mi2s_tx_1>,
 			<&dai_quat_mi2s_tx_2>, <&dai_quat_mi2s_tx_3>,
-			<&dai_quat_mi2s_tx_4>;
+			<&dai_quat_mi2s_tx_4>, <&spkr_i2s_rx>;
 		asoc-cpu-names = "msm-dai-q6-auxpcm.1", "msm-dai-q6-auxpcm.2",
 			"msm-dai-q6-hdmi.8", "msm-dai-q6-mi2s.1",
 			"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
@@ -96,7 +96,7 @@
 			"msm-dai-q6-mi2s.4130", "msm-dai-q6-mi2s.4132",
 			"msm-dai-q6-mi2s.4134", "msm-dai-q6-mi2s.4129",
 			"msm-dai-q6-mi2s.4131", "msm-dai-q6-mi2s.4133",
-			"msm-dai-q6-mi2s.4135";
+			"msm-dai-q6-mi2s.4135", "msm-dai-q6-dev.4104";
 		asoc-codec = <&stub_codec>;
 		asoc-codec-names = "msm-stub-codec.1";
 	};
@@ -218,6 +218,11 @@
 		incall_music2_rx: qcom,msm-dai-q6-incall-music-2-rx {
 			compatible = "qcom,msm-dai-q6-dev";
 			qcom,msm-dai-q6-dev-id = <32770>;
+		};
+
+		spkr_i2s_rx: qcom,msm-dai-q6-spkr-i2s-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <4104>;
 		};
 	};
 

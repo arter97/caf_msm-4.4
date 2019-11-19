@@ -949,6 +949,7 @@ int afe_sizeof_cfg_cmd(u16 port_id)
 	int ret_size;
 	switch (port_id) {
 	case PRIMARY_I2S_RX:
+	case AUDIO_PORT_ID_I2S_RX:
 	case PRIMARY_I2S_TX:
 	case SECONDARY_I2S_RX:
 	case SECONDARY_I2S_TX:
@@ -3353,6 +3354,7 @@ static int __afe_port_start(u16 port_id, union afe_port_config *afe_config,
 		cfg_type = AFE_PARAM_ID_PCM_CONFIG;
 		break;
 	case PRIMARY_I2S_RX:
+	case AUDIO_PORT_ID_I2S_RX:
 	case PRIMARY_I2S_TX:
 	case SECONDARY_I2S_RX:
 	case SECONDARY_I2S_TX:
@@ -3547,6 +3549,8 @@ int afe_get_port_index(u16 port_id)
 {
 	switch (port_id) {
 	case PRIMARY_I2S_RX: return IDX_PRIMARY_I2S_RX;
+	case AUDIO_PORT_ID_I2S_RX:
+		return IDX_AUDIO_PORT_ID_I2S_RX;
 	case PRIMARY_I2S_TX: return IDX_PRIMARY_I2S_TX;
 	case AFE_PORT_ID_PRIMARY_PCM_RX:
 		return IDX_AFE_PORT_ID_PRIMARY_PCM_RX;
@@ -3908,6 +3912,7 @@ int afe_open(u16 port_id,
 
 	switch (port_id) {
 	case PRIMARY_I2S_RX:
+	case AUDIO_PORT_ID_I2S_RX:
 	case PRIMARY_I2S_TX:
 		cfg_type = AFE_PARAM_ID_I2S_CONFIG;
 		break;

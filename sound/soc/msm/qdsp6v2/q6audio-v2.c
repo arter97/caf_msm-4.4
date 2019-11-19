@@ -776,6 +776,7 @@ int q6audio_validate_port(u16 port_id)
 
 	switch (port_id) {
 	case PRIMARY_I2S_RX:
+	case AUDIO_PORT_ID_I2S_RX:
 	case PRIMARY_I2S_TX:
 	case AFE_PORT_ID_PRIMARY_PCM_RX:
 	case AFE_PORT_ID_PRIMARY_PCM_TX:
