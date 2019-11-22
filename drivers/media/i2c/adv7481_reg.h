@@ -95,6 +95,8 @@
 #define IO_DE_REGEN_LCK_RAW_BMSK                0x0001
 #define IO_DE_REGEN_LCK_RAW_SHFT                0
 
+#define IO_HDMI_LVL_INT_STATUS_3_VALID_BITS_BMSK 0x43
+
 #define IO_HDMI_LVL_INT_STATUS_3_ADDR           0x72
 #define IO_CABLE_DET_A_ST_BMSK                  0x0040
 #define IO_CABLE_DET_A_ST_SHFT                  6
@@ -209,6 +211,8 @@
 #define IO_INT_SD_ST_SHFT                       0
 
 #define IO_REG_DATAPATH_INT_CLEAR_ADDR          0x45
+
+#define IO_REG_DATAPATH_INT_STATUS_VALID_BITS_BMSK 0xC0
 
 #define IO_REG_DATAPATH_INT_MASKB_ADDR          0x47
 #define IO_CP_LOCK_CP_MB1_BMSK                  0x0080

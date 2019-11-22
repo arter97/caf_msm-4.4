@@ -149,8 +149,11 @@ struct adv7481_state {
 	int csia_src;
 	int csib_src;
 	int mode;
+	bool cable_connected;
 
 	/* AVI Infoframe Params */
+	bool valid_avi_infoframe;
+	union hdmi_infoframe hdmi_info_frame;
 	struct avi_infoframe_params hdmi_avi_infoframe;
 
 	/* resolution configuration */
@@ -418,6 +421,7 @@ static uint16_t adv7481_rd_word(struct msm_camera_i2c_client *c_i2c_client,
 static int adv7481_set_irq(struct adv7481_state *state)
 {
 	int ret = 0;
+	uint8_t raw_status;
 
 	ret = adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
 			IO_REG_PAD_CTRL_1_ADDR,
@@ -437,7 +441,6 @@ static int adv7481_set_irq(struct adv7481_state *state)
 			IO_REG_DATAPATH_INT_MASKB_ADDR,
 			ADV_REG_SETFIELD(1, IO_CP_LOCK_CP_MB1) |
 			ADV_REG_SETFIELD(1, IO_CP_UNLOCK_CP_MB1) |
-			ADV_REG_SETFIELD(1, IO_VMUTE_REQUEST_HDMI_MB1) |
 			ADV_REG_SETFIELD(1, IO_INT_SD_MB1));
 
 	/* Set cable detect */
@@ -446,6 +449,14 @@ static int adv7481_set_irq(struct adv7481_state *state)
 			ADV_REG_SETFIELD(1, IO_CABLE_DET_A_MB1) |
 			ADV_REG_SETFIELD(1, IO_V_LOCKED_MB1) |
 			ADV_REG_SETFIELD(1, IO_DE_REGEN_LCK_MB1));
+
+	raw_status = adv7481_rd_byte(&state->i2c_client,
+								state->i2c_io_addr,
+								IO_HDMI_LVL_RAW_STATUS_3_ADDR);
+	if (ADV_REG_GETFIELD(raw_status, IO_CABLE_DET_A_RAW)) {
+		state->cable_connected = true;
+		pr_info("%s: Detected cable connected\n", __func__);
+	}
 
 	/* set CVBS lock/unlock interrupts */
 	/* Select SDP MAP 1 */
@@ -584,12 +595,57 @@ static int adv7481_release_cci_clks(struct adv7481_state *state)
 	return ret;
 }
 
+static int adv7481_get_avi_infoframe(struct adv7481_state *state)
+{
+        int ret = -EINVAL;
+        int raw_status;
+        raw_status = adv7481_rd_byte(&state->i2c_client,
+                                state->i2c_io_addr,
+                                IO_HDMI_LVL_RAW_STATUS_1_ADDR);
+        if (ADV_REG_GETFIELD(raw_status, IO_AVI_INFO_RAW)) {
+                uint8_t inf_buffer[AVI_INFOFRAME_SIZE];
+                struct device *dev = state->dev;
+                pr_debug("%s: --------- Got AVI_INFO_FRAME----------\n", __func__);
+                inf_buffer[0] = adv7481_rd_byte(&state->i2c_client,
+                        state->i2c_hdmi_inf_addr,
+                        HDMI_REG_AVI_PACKET_ID_ADDR);
+                inf_buffer[1] = adv7481_rd_byte(&state->i2c_client,
+                        state->i2c_hdmi_inf_addr,
+                        HDMI_REG_AVI_INF_VERS_ADDR);
+                inf_buffer[2] = adv7481_rd_byte(&state->i2c_client,
+                        state->i2c_hdmi_inf_addr,
+                        HDMI_REG_AVI_INF_LEN_ADDR);
+                ret = adv7481_rd_block(&state->i2c_client,
+                        state->i2c_hdmi_inf_addr,
+                        HDMI_REG_AVI_INF_PB_ADDR,
+                        &inf_buffer[3],
+                        INFOFRAME_DATA_SIZE);
+                if (ret) {
+                        pr_err("%s: Error in reading AVI Infoframe\n",
+                                        __func__);
+                } else if (hdmi_infoframe_unpack(&state->hdmi_info_frame,
+                                (void *)inf_buffer) < 0) {
+                        pr_err("%s: Infoframe unpack fail\n", __func__);
+                } else {
+                        state->valid_avi_infoframe = true;
+                        hdmi_infoframe_log(KERN_ERR, dev, &state->hdmi_info_frame);
+                }
+        }
+
+        return ret;
+}
+
 static void adv7481_irq_delay_work(struct work_struct *work)
 {
 	struct adv7481_state *state;
 	uint8_t int_raw_status;
-	uint8_t int_status;
-	uint8_t raw_status;
+	uint8_t int_status = 0;
+	uint8_t raw_status = 0;
+	uint8_t int_status_edg = 0;
+
+	uint8_t int_status_hdmi_lvl3 = 0;
+	uint8_t int_status_datapath = 0;
+	uint8_t check_once = 1;
 
 	state = container_of(work, struct adv7481_state,
 				irq_delayed_work.work);
@@ -604,24 +660,28 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 			state->device_num, int_raw_status);
 	state->cec_detected = ADV_REG_GETFIELD(int_raw_status, IO_INT_CEC_ST);
 
-	while (int_raw_status) {
-		if (ADV_REG_GETFIELD(int_raw_status, IO_INTRQ1_RAW)) {
+	int_status_datapath = adv7481_rd_byte(&state->i2c_client,state->i2c_io_addr,IO_REG_DATAPATH_INT_STATUS_ADDR);
+	adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr, IO_REG_DATAPATH_INT_CLEAR_ADDR, int_status_datapath);
+	int_status_hdmi_lvl3 = adv7481_rd_byte(&state->i2c_client,state->i2c_io_addr,IO_HDMI_LVL_INT_STATUS_3_ADDR);
+	adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr, IO_HDMI_LVL_INT_CLEAR_3_ADDR, int_status_hdmi_lvl3);
+	int_status_edg = adv7481_rd_byte(&state->i2c_client, state->i2c_io_addr, IO_HDMI_EDG_INT_STATUS_1_ADDR);
+	adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr, IO_HDMI_EDG_INT_CLEAR_1_ADDR, int_status_edg);
+
+	while ((int_status_datapath & IO_REG_DATAPATH_INT_STATUS_VALID_BITS_BMSK) ||
+		(int_status_hdmi_lvl3 & IO_HDMI_LVL_INT_STATUS_3_VALID_BITS_BMSK) ||
+		int_status_edg || check_once) {
+		pr_debug("%s: dev: %d, datapath int status: 0x%x, int_status_hdmi_lvl3: 0x%x, int_status_edg: 0x%x\n", __func__, state->device_num, int_status_datapath, int_status_hdmi_lvl3, int_status_edg);
+		check_once = 0;
+		if (int_status_datapath) {
 			int lock_status = -1;
 			struct v4l2_event event = {0};
 			int *ptr = (int *)event.u.data;
 
-			pr_debug("%s: dev: %d got intrq1_raw\n", __func__,
-					state->device_num);
-			int_status = adv7481_rd_byte(&state->i2c_client,
-					state->i2c_io_addr,
-					IO_REG_DATAPATH_INT_STATUS_ADDR);
+			int_status = int_status_datapath;
 
 			raw_status = adv7481_rd_byte(&state->i2c_client,
 					state->i2c_io_addr,
 					IO_REG_DATAPATH_RAW_STATUS_ADDR);
-
-			adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-				IO_REG_DATAPATH_INT_CLEAR_ADDR, int_status);
 
 			pr_debug("%s: dev: %d got datapath int status: 0x%x\n",
 				__func__, state->device_num, int_status);
@@ -698,7 +758,15 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 			}
 		}
 
-		if (ADV_REG_GETFIELD(int_raw_status, IO_INT_HDMI_ST)) {
+		if (int_status_edg) {
+			pr_debug("%s: dev: %d got hdmi lvl int_status_edg: 0x%x\n",
+				__func__, state->device_num, int_status_edg);
+			if (ADV_REG_GETFIELD(int_status_edg, IO_NEW_AVI_INFO_ST)) {
+				adv7481_get_avi_infoframe(state);
+			}
+		}
+
+		if (int_status_hdmi_lvl3) {
 			int cable_detected = 0;
 			struct v4l2_event event = {0};
 			int *ptr = (int *)event.u.data;
@@ -708,16 +776,11 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 			pr_debug("%s: dev: %d got int_hdmi_st\n", __func__,
 				state->device_num);
 
-			int_status = adv7481_rd_byte(&state->i2c_client,
-				state->i2c_io_addr,
-				IO_HDMI_LVL_INT_STATUS_3_ADDR);
+			int_status = int_status_hdmi_lvl3;
 
 			raw_status = adv7481_rd_byte(&state->i2c_client,
 				state->i2c_io_addr,
 				IO_HDMI_LVL_RAW_STATUS_3_ADDR);
-
-			adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr,
-				IO_HDMI_LVL_INT_CLEAR_3_ADDR, int_status);
 
 			pr_debug("%s: dev: %d got hdmi lvl int status 3: 0x%x\n",
 				__func__, state->device_num, int_status);
@@ -728,9 +791,17 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 			if (ADV_REG_GETFIELD(int_status, IO_CABLE_DET_A_ST)) {
 				cable_detected = ADV_REG_GETFIELD(raw_status,
 					IO_CABLE_DET_A_RAW);
-				pr_debug("%s: set cable_detected: 0x%x\n",
+				pr_info("%s:--------- set cable_detected: 0x%x---------------\n",
 					__func__, cable_detected);
+
 				ptr[1] = cable_detected;
+				if (!cable_detected) {
+					state->cable_connected = false;
+					state->valid_avi_infoframe = false;
+				} else {
+					state->cable_connected = true;
+				}
+
 				event.type = V4L2_EVENT_MSM_BA_CABLE_DETECT;
 				v4l2_subdev_notify(&state->sd,
 					event.type, &event);
@@ -739,8 +810,9 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 			 * is the last one to come
 			 */
 			if (ADV_REG_GETFIELD(int_status, IO_V_LOCKED_ST)) {
-				if (ADV_REG_GETFIELD(raw_status,
-					IO_TMDSPLL_LCK_A_RAW) &&
+				if (state->cable_connected &&
+					ADV_REG_GETFIELD(raw_status,
+						IO_TMDSPLL_LCK_A_RAW) &&
 					ADV_REG_GETFIELD(raw_status,
 					IO_V_LOCKED_RAW) &&
 					ADV_REG_GETFIELD(raw_status,
@@ -754,9 +826,22 @@ static void adv7481_irq_delay_work(struct work_struct *work)
 				}
 			}
 		}
-		int_raw_status = adv7481_rd_byte(&state->i2c_client,
-				state->i2c_io_addr,
-				IO_REG_INT_RAW_STATUS_ADDR);
+
+		int_status_datapath = adv7481_rd_byte(&state->i2c_client,state->i2c_io_addr,IO_REG_DATAPATH_INT_STATUS_ADDR);
+		adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr, IO_REG_DATAPATH_INT_CLEAR_ADDR, int_status_datapath);
+		int_status_hdmi_lvl3 = adv7481_rd_byte(&state->i2c_client,state->i2c_io_addr,IO_HDMI_LVL_INT_STATUS_3_ADDR);
+		adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr, IO_HDMI_LVL_INT_CLEAR_3_ADDR, int_status_hdmi_lvl3);
+		int_status_edg = adv7481_rd_byte(&state->i2c_client, state->i2c_io_addr, IO_HDMI_EDG_INT_STATUS_1_ADDR);
+		adv7481_wr_byte(&state->i2c_client, state->i2c_io_addr, IO_HDMI_EDG_INT_CLEAR_1_ADDR, int_status_edg);
+	}
+
+	int_raw_status = adv7481_rd_byte(&state->i2c_client, state->i2c_io_addr,
+									IO_REG_INT_RAW_STATUS_ADDR);
+	pr_info("%s: Exiting delayed work, int raw status: 0x%x\n", __func__, int_raw_status);
+	if (int_raw_status)
+	{
+		pr_info("%s: Scheduling delayed work\n", __func__);
+		schedule_delayed_work(&state->irq_delayed_work, msecs_to_jiffies(ADV_REG_STABLE_DELAY));
 	}
 	mutex_unlock(&state->mutex);
 }
