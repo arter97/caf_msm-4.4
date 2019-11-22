@@ -1775,7 +1775,7 @@ static int get_settle_cnt(struct resolution_config *configs,
 		strlcpy(res_type, "RES_1080P", sizeof(res_type));
 	} else if (w == 1280 && h == 720) {
 		strlcpy(res_type, "RES_720P", sizeof(res_type));
-	} else if ((w == 720 && h == 576) || (w == 720 && h == 480)) {
+	} else if ((w == 720 && h == 576) || (w == 720 && h == 480) || (w == 640 && h == 480)) {
 		strlcpy(res_type, "RES_576P_480P", sizeof(res_type));
 	} else {
 		pr_err("%s: Resolution not supported\n", __func__);
@@ -1805,7 +1805,7 @@ static int get_lane_cnt(struct resolution_config *configs,
 		strlcpy(res_type, "RES_1080P", sizeof(res_type));
 	} else if (w == 1280 && h == 720) {
 		strlcpy(res_type, "RES_720P", sizeof(res_type));
-	} else if ((w == 720 && h == 576) || (w == 720 && h == 480)) {
+	} else if ((w == 720 && h == 576) || (w == 720 && h == 480) || (w == 640 && h == 480)) {
 		strlcpy(res_type, "RES_576P_480P", sizeof(res_type));
 	} else {
 		pr_err("%s: Resolution not supported\n", __func__);
