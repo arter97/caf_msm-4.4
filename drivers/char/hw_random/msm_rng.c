@@ -467,6 +467,10 @@ err_exit:
 	return ret;
 }
 
+int of_platform_populate_async_display_add_work(void);
+
+module_init(of_platform_populate_async_display_add_work);
+
 module_init(msm_rng_init);
 
 static void __exit msm_rng_exit(void)

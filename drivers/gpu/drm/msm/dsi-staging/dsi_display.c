@@ -2899,7 +2899,7 @@ int dsi_dsiplay_setup_splash_resource(struct dsi_display *display)
 	return ret;
 }
 
-static int __init dsi_display_register(void)
+int __init dsi_display_register(void)
 {
 	dsi_phy_drv_register();
 	dsi_ctrl_drv_register();
@@ -2913,5 +2913,5 @@ static void __exit dsi_display_unregister(void)
 	dsi_phy_drv_unregister();
 }
 
-module_init(dsi_display_register);
+//module_init(dsi_display_register);
 module_exit(dsi_display_unregister);

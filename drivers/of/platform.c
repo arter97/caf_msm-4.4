@@ -31,7 +31,6 @@ static void of_platform_populate_async_pcie_add_work(struct device_node *bus,
 							struct device *parent);
 unsigned long msecs = 200;
 
-
 struct pcie_pop_item {
        struct delayed_work work;
        struct device_node *bus;
@@ -673,3 +672,42 @@ int __init of_platform_populate_async_etrace_add_work(void)
         return 0;
 }
 
+int diagchar_init(void);
+int drm_core_init(void);
+int msm_edrm_register(void);
+int dsi_display_register(void);
+int sde_hdmi_register(void);
+int sde_wb_register(void);
+int msm_drm_register(void);
+int kgsl_core_init(void);
+int kgsl_3d_init(void);
+
+static void __init of_platform_populate_async_display_work_fn(struct work_struct *work)
+{
+       trace_printk("of_platform_populate_async_display_work_fn start\n");
+       diagchar_init();
+       drm_core_init();
+       msm_edrm_register();
+       dsi_display_register();
+       sde_hdmi_register();
+       sde_wb_register();
+       msm_drm_register();
+       kgsl_core_init();
+       kgsl_3d_init();
+       trace_printk("of_platform_populate_async_display_work_fn end\n");
+       kfree(work);
+}
+
+int __init of_platform_populate_async_display_add_work(void)
+{
+       struct work_struct *item;
+
+       if(of_platform_populate_async_wq) {
+               item = kzalloc(sizeof(struct work_struct), GFP_ATOMIC);
+               if(item) {
+                       INIT_WORK(item, of_platform_populate_async_display_work_fn);
+                       queue_work(of_platform_populate_async_wq, item);
+               }
+       }
+       return 0;
+}

@@ -3408,7 +3408,7 @@ int sde_hdmi_drm_deinit(struct sde_hdmi *display)
 	return rc;
 }
 
-static int __init sde_hdmi_register(void)
+int __init sde_hdmi_register(void)
 {
 	int rc = 0;
 
@@ -3422,5 +3422,5 @@ static void __exit sde_hdmi_unregister(void)
 	platform_driver_unregister(&sde_hdmi_driver);
 }
 
-module_init(sde_hdmi_register);
+//module_init(sde_hdmi_register);
 module_exit(sde_hdmi_unregister);

@@ -879,7 +879,7 @@ static const struct file_operations drm_stub_fops = {
 	.llseek = noop_llseek,
 };
 
-static int __init drm_core_init(void)
+int __init drm_core_init(void)
 {
 	int ret = -ENOMEM;
 
@@ -927,5 +927,5 @@ static void __exit drm_core_exit(void)
 	idr_destroy(&drm_minors_idr);
 }
 
-module_init(drm_core_init);
+//module_init(drm_core_init);
 module_exit(drm_core_exit);

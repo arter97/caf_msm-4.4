@@ -2494,7 +2494,7 @@ void __exit adreno_unregister(void)
 }
 #endif
 
-static int __init msm_drm_register(void)
+int __init msm_drm_register(void)
 {
 	DBG("init");
 	msm_smmu_driver_init();
@@ -2529,7 +2529,7 @@ static int __init msm_drm_late_register(void)
 	return 0;
 }
 
-module_init(msm_drm_register);
+//module_init(msm_drm_register);
 module_exit(msm_drm_unregister);
 /* init level 7 */
 late_initcall(msm_drm_late_register);
