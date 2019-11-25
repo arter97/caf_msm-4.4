@@ -752,6 +752,7 @@ static struct platform_driver msm_vidc_driver = {
 		.name = "msm_vidc_v4l2",
 		.owner = THIS_MODULE,
 		.of_match_table = msm_vidc_dt_match,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.pm = &msm_vidc_pm_ops,
 	},
 };

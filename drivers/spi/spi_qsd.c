@@ -2927,6 +2927,7 @@ static struct platform_driver msm_spi_driver = {
 	.driver		= {
 		.name	= SPI_DRV_NAME,
 		.owner	= THIS_MODULE,
+		.probe_type = PROBE_PREFER_ASYNCHRONOUS,
 		.pm		= &msm_spi_dev_pm_ops,
 		.of_match_table = msm_spi_dt_match,
 	},
