@@ -20,6 +20,7 @@
 #define AVCS_CMDRSP_ADSP_EVENT_GET_STATE	0x0001290D
 
 bool q6core_is_adsp_ready(void);
+int avcs_core_query_timer_offset(int64_t *av_offset, int32_t clock_id);
 
 #define ADSP_CMD_SET_DTS_EAGLE_DATA_ID 0x00012919
 #define DTS_EAGLE_LICENSE_ID           0x00028346
