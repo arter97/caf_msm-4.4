@@ -140,6 +140,7 @@ struct adv7481_state {
 	int powerup;
 	int cec_detected;
 	int clocks_requested;
+	u32 cvbs_supported;
 
 	/* GPIOs */
 	struct gpio gpio_array[ADV7481_GPIO_MAX];
@@ -1552,6 +1553,11 @@ static int adv7481_set_ip_mode(struct adv7481_state *state, int input)
 	int ret = 0;
 
 	pr_debug("Enter %s: input: %d\n", __func__, input);
+	if (!state->cvbs_supported) {
+		pr_err("%s: Only HDMI mode is supported, ignoring mode change\n", __func__);
+		return ret;
+	}
+
 	switch (input) {
 	case ADV7481_IP_HDMI:
 		ret = adv7481_set_hdmi_mode(state);
@@ -2629,6 +2635,12 @@ static int adv7481_parse_dt(struct platform_device *pdev,
 		strlcpy(state->res_configs[i].resolution, resolution_array[i],
 			sizeof(state->res_configs[i].resolution));
 	}
+	if (of_property_read_bool(np, "cvbs-supported")) {
+		state->cvbs_supported = true;
+		pr_info("%s: cvbs-supported flag = true\n", __func__);
+	} else {
+		pr_info("%s: cvbs-supported flag is not set\n", __func__);
+	}
 	adv_addr_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!adv_addr_res) {
 		pr_err("%s: failed to read adv7481 resource.\n", __func__);
@@ -2786,6 +2798,9 @@ static int adv7481_probe(struct platform_device *pdev)
 			__func__, __LINE__);
 		goto err_media_entity;
 	}
+
+	/* Program the bridge chip for HDMI mode */
+	ret = adv7481_set_hdmi_mode(state);
 
 	/* BA registration */
 	ret = msm_ba_register_subdev_node(sd);
