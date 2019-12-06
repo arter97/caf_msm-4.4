@@ -21,6 +21,8 @@ Required properties
 	to select settle count by adv7481 driver.
 - res-array: Should contain array of resolution supported by
 	adv7481 driver.
+- cvbs-supported: Should contain a value of 1 if CVBS input should be
+	supported.
 - cam_vio-supply: Should contain regulator to be used for the IO vdd.
 - cam_vana-supply: Should contain regulator from which analog voltage
 	is supplied.
