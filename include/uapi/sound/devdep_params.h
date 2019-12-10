@@ -66,4 +66,12 @@ struct dts_eagle_param_desc {
 	uint32_t device;
 } __packed;
 
+struct snd_pcm_prsnt_position {
+	uint64_t timestamp;
+	uint64_t frames;
+	int32_t clock_id;
+};
+
+#define SNDRV_PCM_IOCTL_DSP_POSITION\
+		_IOWR('U', 0xd3, struct snd_pcm_prsnt_position)
 #endif
