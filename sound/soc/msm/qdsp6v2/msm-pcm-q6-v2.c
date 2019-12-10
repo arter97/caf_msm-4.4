@@ -1085,6 +1085,10 @@ static int msm_pcm_ioctl(struct snd_pcm_substream *substream,
 				__func__, rc);
 			goto done;
 		}
+		if ((abs_time == 0) && (ses_time == 0)) {
+			rc = -EAGAIN;
+			goto done;
+		}
 		userarg.frames = div64_u64((ses_time * prtd->samp_rate),
 					   1000000);
 
