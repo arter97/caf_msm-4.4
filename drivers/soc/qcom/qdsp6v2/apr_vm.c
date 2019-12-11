@@ -530,6 +530,9 @@ static int apr_vm_cb_thread(void *data)
 	int status = 0;
 	int ret = 0;
 
+	struct sched_param param = {.sched_priority = 1};
+	sched_setscheduler(current, SCHED_FIFO, &param);
+
 	while (1) {
 		do {
 			apr_rx_buf_len = sizeof(apr_rx_buf);
