@@ -538,11 +538,12 @@ static struct platform_driver msm_dai_q6_hdmi_driver = {
 	},
 };
 
-static int __init msm_dai_q6_hdmi_init(void)
+//static int __init msm_dai_q6_hdmi_init(void)
+int __init msm_dai_q6_hdmi_init(void)
 {
 	return platform_driver_register(&msm_dai_q6_hdmi_driver);
 }
-module_init(msm_dai_q6_hdmi_init);
+//module_init(msm_dai_q6_hdmi_init);
 
 static void __exit msm_dai_q6_hdmi_exit(void)
 {

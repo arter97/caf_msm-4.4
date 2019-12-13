@@ -4697,7 +4697,8 @@ done:
 	return ret;
 }
 
-static int __init adm_init(void)
+//static int __init adm_init(void)
+int __init adm_init(void)
 {
 	int i = 0, j;
 
@@ -4727,5 +4728,5 @@ static void __exit adm_exit(void)
 	adm_delete_cal_data();
 }
 
-device_initcall(adm_init);
+//device_initcall(adm_init);
 module_exit(adm_exit);

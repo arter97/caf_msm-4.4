@@ -8720,7 +8720,8 @@ int is_voc_initialized(void)
 	return module_initialized;
 }
 
-static int __init voice_init(void)
+//static int __init voice_init(void)
+int __init voice_init(void)
 {
 	int rc = 0, i = 0;
 
@@ -8816,7 +8817,8 @@ static int __init voice_init(void)
 	return rc;
 }
 
-device_initcall(voice_init);
+//device_initcall(voice_init);
+//fs_initcall(voice_init);
 
 static void __exit voice_exit(void)
 {

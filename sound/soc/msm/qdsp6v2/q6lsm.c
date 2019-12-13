@@ -2107,7 +2107,8 @@ err:
 	return ret;
 }
 
-static int __init q6lsm_init(void)
+//static int __init q6lsm_init(void)
+int __init q6lsm_init(void)
 {
 	int i = 0;
 	pr_debug("%s:\n", __func__);
@@ -2135,5 +2136,5 @@ static void __exit q6lsm_exit(void)
 	lsm_delete_cal_data();
 }
 
-device_initcall(q6lsm_init);
+//device_initcall(q6lsm_init);
 __exitcall(q6lsm_exit);

@@ -2872,11 +2872,12 @@ static struct platform_driver msm_fe_dai_driver = {
 	},
 };
 
-static int __init msm_fe_dai_init(void)
+//static int __init msm_fe_dai_init(void)
+int __init msm_fe_dai_init(void)
 {
 	return platform_driver_register(&msm_fe_dai_driver);
 }
-module_init(msm_fe_dai_init);
+//module_init(msm_fe_dai_init);
 
 static void __exit msm_fe_dai_exit(void)
 {

@@ -1807,7 +1807,8 @@ EXPORT_SYMBOL(snd_rawmidi_set_ops);
  *  ENTRY functions
  */
 
-static int __init alsa_rawmidi_init(void)
+//static int __init alsa_rawmidi_init(void)
+int __init alsa_rawmidi_init(void)
 {
 
 	snd_ctl_register_ioctl(snd_rawmidi_control_ioctl);
@@ -1838,5 +1839,5 @@ static void __exit alsa_rawmidi_exit(void)
 	snd_ctl_unregister_ioctl_compat(snd_rawmidi_control_ioctl);
 }
 
-module_init(alsa_rawmidi_init)
+//module_init(alsa_rawmidi_init)
 module_exit(alsa_rawmidi_exit)

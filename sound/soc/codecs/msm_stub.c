@@ -72,11 +72,12 @@ static struct platform_driver msm_stub_driver = {
 	.remove = msm_stub_dev_remove,
 };
 
-static int __init msm_stub_init(void)
+//static int __init msm_stub_init(void)
+int __init msm_stub_init(void)
 {
 	return platform_driver_register(&msm_stub_driver);
 }
-module_init(msm_stub_init);
+//module_init(msm_stub_init);
 
 static void __exit msm_stub_exit(void)
 {

@@ -648,7 +648,8 @@ static struct slim_driver msm_dai_slim_driver = {
 	.id_table = msm_dai_slim_dt_match,
 };
 
-static int __init msm_dai_slim_init(void)
+//static int __init msm_dai_slim_init(void)
+int __init msm_dai_slim_init(void)
 {
 	int rc;
 	rc = slim_driver_register(&msm_dai_slim_driver);
@@ -657,7 +658,7 @@ static int __init msm_dai_slim_init(void)
 			__func__, rc);
 	return rc;
 }
-module_init(msm_dai_slim_init);
+//module_init(msm_dai_slim_init);
 
 static void __exit msm_dai_slim_exit(void)
 {

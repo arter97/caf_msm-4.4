@@ -18721,7 +18721,8 @@ err:
 	return ret;
 }
 
-static int __init msm_soc_routing_platform_init(void)
+//static int __init msm_soc_routing_platform_init(void)
+int __init msm_soc_routing_platform_init(void)
 {
 	mutex_init(&routing_lock);
 	if (msm_routing_init_cal_data())
@@ -18735,7 +18736,7 @@ static int __init msm_soc_routing_platform_init(void)
 
 	return platform_driver_register(&msm_routing_pcm_driver);
 }
-module_init(msm_soc_routing_platform_init);
+//module_init(msm_soc_routing_platform_init);
 
 static void __exit msm_soc_routing_platform_exit(void)
 {

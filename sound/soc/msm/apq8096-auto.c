@@ -10,6 +10,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#include <linux/async.h>
 
 #include <linux/clk.h>
 #include <linux/delay.h>
@@ -7718,8 +7719,96 @@ static int __init apq8096_soc_platform_init(void)
 	return 0;
 }
 
-module_init(apq8096_soc_platform_init);
-module_platform_driver(apq8096_asoc_machine_driver);
+extern int __init alsa_timer_init(void);
+extern int __init voice_init(void);
+extern int __init alsa_pcm_init(void);
+extern int __init alsa_rawmidi_init(void);
+extern int __init snd_compress_init(void);
+extern int __init snd_soc_init(void);
+extern int __init msm_stub_init(void);
+extern int __init msm_soc_platform_init_pcm_hostless(void);
+extern int __init msm_dai_slim_init(void);
+extern int __init audio_slimslave_init(void);
+extern int __init msm_dai_q6_init(void);
+extern int __init msm_soc_platform_init_pcm_q6_v2(void);
+extern int __init msm_soc_routing_platform_init(void);
+extern int __init msm_soc_platform_init_compress_q6_v2(void);
+extern int __init msm_soc_platform_init_pcm_afe_v2(void);
+extern int __init msm_soc_platform_init_pcm_voip_v2(void);
+extern int __init msm_soc_platform_init_pcm_voice_v2(void);
+extern int __init msm_dai_q6_hdmi_init(void);
+extern int __init msm_soc_platform_init_lsm_client(void);
+extern int __init msm_soc_platform_init_pcm_host_voice_v2(void);
+extern int __init msm_soc_platform_init_pcm_loopback_v2(void);
+extern int __init msm_soc_platform_init_transcode_loopback_q6_v2(void);
+extern int __init msm_soc_platform_init_pcm_dtmf_v2(void);
+extern int __init msm_dai_stub_init(void);
+extern int __init adm_init(void);
+extern int __init afe_init(void);
+extern int __init q6asm_init(void);
+extern int __init q6_core_init(void);
+extern int __init rtac_init(void);
+extern int __init q6lsm_init(void);
+extern int __init msm_soc_platform_init_pcm_q6_noirq(void);
+extern int __init msm_fe_dai_init(void);
+extern int __init apr_init(void);
+
+static int __init apq8096_asoc_machine_driver_init(void)
+{
+	return platform_driver_register(&apq8096_asoc_machine_driver);
+}
+
+static void __exit apq8096_asoc_machine_driver_exit(void)
+{
+	return platform_driver_unregister(&apq8096_asoc_machine_driver);
+}
+module_exit(apq8096_asoc_machine_driver_exit);
+
+static void early_audio_init_async(void *data, async_cookie_t cookie)
+{
+	voice_init();
+	alsa_timer_init();
+	alsa_pcm_init();
+	alsa_rawmidi_init();
+	snd_compress_init();
+	snd_soc_init();
+	msm_stub_init();
+	msm_soc_platform_init_pcm_hostless();
+	msm_dai_slim_init();
+	audio_slimslave_init();
+	msm_dai_q6_init();
+	msm_soc_platform_init_pcm_q6_v2();
+	msm_soc_routing_platform_init();
+	msm_soc_platform_init_compress_q6_v2();
+	msm_soc_platform_init_pcm_afe_v2();
+	msm_soc_platform_init_pcm_voip_v2();
+	msm_soc_platform_init_pcm_voice_v2();
+	msm_dai_q6_hdmi_init();
+	msm_soc_platform_init_lsm_client();
+	msm_soc_platform_init_pcm_host_voice_v2();
+	msm_soc_platform_init_pcm_loopback_v2();
+	msm_soc_platform_init_transcode_loopback_q6_v2();
+	msm_soc_platform_init_pcm_dtmf_v2();
+	msm_dai_stub_init();
+	adm_init();
+	afe_init();
+	q6asm_init();
+	q6_core_init();
+	rtac_init();
+	q6lsm_init();
+	msm_soc_platform_init_pcm_q6_noirq();
+	msm_fe_dai_init();
+	apr_init();
+	apq8096_soc_platform_init();
+	apq8096_asoc_machine_driver_init();
+}
+
+int __init early_audio_init_async_start(void)
+{
+	async_schedule(early_audio_init_async, NULL);
+	return 0;
+}
+subsys_initcall_sync(early_audio_init_async_start);
 
 MODULE_DESCRIPTION("ALSA SoC msm");
 MODULE_LICENSE("GPL v2");

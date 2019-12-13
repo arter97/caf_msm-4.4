@@ -906,12 +906,13 @@ static struct platform_driver msm_afe_driver = {
 	.remove = msm_afe_remove,
 };
 
-static int __init msm_soc_platform_init(void)
+//static int __init msm_soc_platform_init(void)
+int __init msm_soc_platform_init_pcm_afe_v2(void)
 {
 	pr_debug("%s\n", __func__);
 	return platform_driver_register(&msm_afe_driver);
 }
-module_init(msm_soc_platform_init);
+//module_init(msm_soc_platform_init);
 
 static void __exit msm_soc_platform_exit(void)
 {

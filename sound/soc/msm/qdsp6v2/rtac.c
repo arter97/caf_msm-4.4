@@ -1984,7 +1984,8 @@ struct miscdevice rtac_misc = {
 	.fops	= &rtac_fops,
 };
 
-static int __init rtac_init(void)
+//static int __init rtac_init(void)
+int __init rtac_init(void)
 {
 	int i = 0;
 
@@ -2068,7 +2069,7 @@ nomem:
 	return -ENOMEM;
 }
 
-module_init(rtac_init);
+//module_init(rtac_init);
 
 MODULE_DESCRIPTION("SoC QDSP6v2 Real-Time Audio Calibration driver");
 MODULE_LICENSE("GPL v2");

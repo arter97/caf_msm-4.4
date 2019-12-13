@@ -1262,7 +1262,8 @@ static void snd_pcm_proc_done(void)
  *  ENTRY functions
  */
 
-static int __init alsa_pcm_init(void)
+//static int __init alsa_pcm_init(void)
+int __init alsa_pcm_init(void)
 {
 	snd_ctl_register_ioctl(snd_pcm_control_ioctl);
 	snd_ctl_register_ioctl_compat(snd_pcm_control_ioctl);
@@ -1277,5 +1278,5 @@ static void __exit alsa_pcm_exit(void)
 	snd_pcm_proc_done();
 }
 
-module_init(alsa_pcm_init)
+//module_init(alsa_pcm_init)
 module_exit(alsa_pcm_exit)

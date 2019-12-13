@@ -1039,7 +1039,8 @@ static struct platform_driver msm_pcm_driver = {
 	.remove = msm_pcm_remove,
 };
 
-static int __init msm_soc_platform_init(void)
+//static int __init msm_soc_platform_init(void)
+int __init msm_soc_platform_init_pcm_voice_v2(void)
 {
 	int i = 0;
 
@@ -1050,7 +1051,7 @@ static int __init msm_soc_platform_init(void)
 
 	return platform_driver_register(&msm_pcm_driver);
 }
-module_init(msm_soc_platform_init);
+//module_init(msm_soc_platform_init);
 
 static void __exit msm_soc_platform_exit(void)
 {

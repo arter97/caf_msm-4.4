@@ -1249,7 +1249,8 @@ err:
 	return ret;
 }
 
-static int __init core_init(void)
+//static int __init core_init(void)
+int __init q6_core_init(void)
 {
 	memset(&q6core_lcl, 0, sizeof(struct q6core_str));
 	init_waitqueue_head(&q6core_lcl.bus_bw_req_wait);
@@ -1263,7 +1264,7 @@ static int __init core_init(void)
 
 	return 0;
 }
-module_init(core_init);
+//module_init(core_init);
 
 static void __exit core_exit(void)
 {

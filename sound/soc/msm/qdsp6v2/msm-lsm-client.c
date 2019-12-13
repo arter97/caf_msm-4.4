@@ -2433,11 +2433,12 @@ static struct platform_driver msm_lsm_driver = {
 	.remove = msm_lsm_remove,
 };
 
-static int __init msm_soc_platform_init(void)
+//static int __init msm_soc_platform_init(void)
+int __init msm_soc_platform_init_lsm_client(void)
 {
 	return platform_driver_register(&msm_lsm_driver);
 }
-module_init(msm_soc_platform_init);
+//module_init(msm_soc_platform_init);
 
 static void __exit msm_soc_platform_exit(void)
 {

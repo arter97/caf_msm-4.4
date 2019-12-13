@@ -666,14 +666,14 @@ static int __driver_attach(struct device *dev, void *data)
 
 	if (!driver_match_device(drv, dev))
 		return 0;
-	if (lock_parent(dev))
-		device_lock(dev->parent);
+	//if (lock_parent(dev))
+		//device_lock(dev->parent);
 	device_lock(dev);
 	if (!dev->driver)
 		driver_probe_device(drv, dev);
 	device_unlock(dev);
-	if (lock_parent(dev))
-		device_unlock(dev->parent);
+	//if (lock_parent(dev))
+		//device_unlock(dev->parent);
 
 	return 0;
 }

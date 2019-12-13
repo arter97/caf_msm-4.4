@@ -3765,14 +3765,15 @@ err:
 }
 EXPORT_SYMBOL_GPL(snd_soc_of_get_dai_link_codecs);
 
-static int __init snd_soc_init(void)
+//static int __init snd_soc_init(void)
+int __init snd_soc_init(void)
 {
 	snd_soc_debugfs_init();
 	snd_soc_util_init();
 
 	return platform_driver_register(&soc_driver);
 }
-module_init(snd_soc_init);
+//module_init(snd_soc_init);
 
 static void __exit snd_soc_exit(void)
 {

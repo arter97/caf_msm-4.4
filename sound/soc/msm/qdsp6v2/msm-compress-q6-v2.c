@@ -4895,11 +4895,12 @@ static struct platform_driver msm_compr_driver = {
 	.remove = msm_compr_remove,
 };
 
-static int __init msm_soc_platform_init(void)
+//static int __init msm_soc_platform_init(void)
+int __init msm_soc_platform_init_compress_q6_v2(void)
 {
 	return platform_driver_register(&msm_compr_driver);
 }
-module_init(msm_soc_platform_init);
+//module_init(msm_soc_platform_init);
 
 static void __exit msm_soc_platform_exit(void)
 {

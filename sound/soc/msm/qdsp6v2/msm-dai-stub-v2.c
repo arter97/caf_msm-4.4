@@ -354,7 +354,8 @@ static struct platform_driver msm_dai_stub_driver = {
 	},
 };
 
-static int __init msm_dai_stub_init(void)
+//static int __init msm_dai_stub_init(void)
+int __init msm_dai_stub_init(void)
 {
 	int rc = 0;
 
@@ -378,7 +379,7 @@ dai_stub_dev_fail:
 fail:
 	return rc;
 }
-module_init(msm_dai_stub_init);
+//module_init(msm_dai_stub_init);
 
 static void __exit msm_dai_stub_exit(void)
 {

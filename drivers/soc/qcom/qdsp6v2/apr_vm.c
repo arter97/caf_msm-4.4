@@ -1155,7 +1155,8 @@ static void apr_vm_set_subsys_state(void)
 	apr_set_modem_state(APR_SUBSYS_LOADED);
 }
 
-static int __init apr_init(void)
+//static int __init apr_init(void)
+int __init apr_init(void)
 {
 	int i, j, k;
 	int ret;
@@ -1229,7 +1230,7 @@ static int __init apr_init(void)
 
 	return 0;
 }
-device_initcall(apr_init);
+//device_initcall(apr_init);
 
 static int __init apr_late_init(void)
 {

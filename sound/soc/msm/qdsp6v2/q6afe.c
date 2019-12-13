@@ -7269,7 +7269,8 @@ done:
 }
 EXPORT_SYMBOL(afe_release_all_dma_resources);
 
-static int __init afe_init(void)
+//static int __init afe_init(void)
+int __init afe_init(void)
 {
 	int i = 0, ret;
 
@@ -7313,5 +7314,5 @@ static void __exit afe_exit(void)
 	wakeup_source_trash(&wl.ws);
 }
 
-device_initcall(afe_init);
+//device_initcall(afe_init);
 __exitcall(afe_exit);

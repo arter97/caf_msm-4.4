@@ -2073,7 +2073,8 @@ static struct device timer_dev;
  *  ENTRY functions
  */
 
-static int __init alsa_timer_init(void)
+//static int __init alsa_timer_init(void)
+int __init alsa_timer_init(void)
 {
 	int err;
 
@@ -2116,7 +2117,7 @@ static void __exit alsa_timer_exit(void)
 #endif
 }
 
-module_init(alsa_timer_init)
+//module_init(alsa_timer_init)
 module_exit(alsa_timer_exit)
 
 EXPORT_SYMBOL(snd_timer_open);

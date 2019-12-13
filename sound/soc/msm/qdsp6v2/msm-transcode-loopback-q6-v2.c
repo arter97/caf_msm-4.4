@@ -1432,13 +1432,14 @@ static struct platform_driver msm_transcode_loopback_driver = {
 	.remove = msm_transcode_remove,
 };
 
-static int __init msm_soc_platform_init(void)
+//static int __init msm_soc_platform_init(void)
+int __init msm_soc_platform_init_transcode_loopback_q6_v2(void)
 {
 	memset(&transcode_info, 0, sizeof(struct msm_transcode_loopback));
 	mutex_init(&transcode_info.lock);
 	return platform_driver_register(&msm_transcode_loopback_driver);
 }
-module_init(msm_soc_platform_init);
+//module_init(msm_soc_platform_init);
 
 static void __exit msm_soc_platform_exit(void)
 {

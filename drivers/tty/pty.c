@@ -6,6 +6,8 @@
  *
  */
 
+#include <linux/async.h>
+
 #include <linux/module.h>
 #include <linux/errno.h>
 #include <linux/interrupt.h>
@@ -886,10 +888,20 @@ static void __init unix98_pty_init(void)
 static inline void unix98_pty_init(void) { }
 #endif
 
-static int __init pty_init(void)
+static void pty_init_async(void *data, async_cookie_t cookie)
 {
 	legacy_pty_init();
 	unix98_pty_init();
+}
+
+static int __init pty_init(void)
+{
+	//legacy_pty_init();
+	//unix98_pty_init();
+	
+	async_schedule(pty_init_async, NULL);
 	return 0;
 }
-device_initcall(pty_init);
+//device_initcall(pty_init);
+subsys_initcall_sync(pty_init);
+

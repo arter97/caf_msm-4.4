@@ -1073,7 +1073,8 @@ int snd_compress_deregister(struct snd_compr *device)
 }
 EXPORT_SYMBOL_GPL(snd_compress_deregister);
 
-static int __init snd_compress_init(void)
+//static int __init snd_compress_init(void)
+int __init snd_compress_init(void)
 {
 	return 0;
 }
@@ -1082,7 +1083,7 @@ static void __exit snd_compress_exit(void)
 {
 }
 
-module_init(snd_compress_init);
+//module_init(snd_compress_init);
 module_exit(snd_compress_exit);
 
 MODULE_DESCRIPTION("ALSA Compressed offload framework");
