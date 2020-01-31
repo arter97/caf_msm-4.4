@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -67,6 +67,7 @@ static int msm_quat_mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_spkr_i2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm_sec_mi2s_rate = SAMPLING_RATE_48KHZ;
 static int msm_spkr_i2s_rate = SAMPLING_RATE_48KHZ;
+static int msm_spkr_i2s_osr_clock_rate = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
 
 /* TDM default channels */
 static int msm_pri_tdm_tx_0_ch = 2;
@@ -601,6 +602,7 @@ static const char *const tdm_slot_width_text[] = {"16", "24", "32"};
 
 static const char *const spkr_i2s_ch_text[] = {"One", "Two"};
 static const char *const spkr_i2s_rate_text[] = {"32000", "44100", "48000"};
+static const char *const spkr_i2s_osr_clock_rate_text[] = { "1.536MHz", "3.072MHz", "6.144MHz", "12.288MHz"};
 
 static struct afe_clk_set sec_mi2s_tx_clk = {
 	AFE_API_VERSION_I2S_CONFIG,
@@ -633,6 +635,15 @@ static struct afe_clk_set spkr_i2s_rx_clk = {
 	AFE_API_VERSION_I2S_CONFIG,
 	Q6AFE_LPASS_CLK_ID_SPEAKER_I2S_IBIT,
 	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	0,
+};
+
+static struct afe_clk_set spkr_i2s_osr_rx_clk = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_CLK_ID_SPEAKER_I2S_OSR,
+	Q6AFE_LPASS_OSR_CLK_12_P288_MHZ,
 	Q6AFE_LPASS_CLK_ATTRIBUTE_COUPLE_NO,
 	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
 	0,
@@ -898,6 +909,38 @@ static int msm_spkr_i2s_rate_put(struct snd_kcontrol *kcontrol,
 	}
 	pr_debug("%s: msm_spkr_i2s_rate = %d\n",
 		__func__, msm_spkr_i2s_rate);
+	return 0;
+}
+
+static int msm_spkr_i2s_osr_clock_rate_get(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = msm_spkr_i2s_osr_clock_rate;
+	return 0;
+}
+
+static int msm_spkr_i2s_osr_clock_rate_put(struct snd_kcontrol *kcontrol,
+				    struct snd_ctl_elem_value *ucontrol)
+{
+	switch (ucontrol->value.integer.value[0]) {
+	case 0:
+		msm_spkr_i2s_osr_clock_rate = Q6AFE_LPASS_OSR_CLK_1_P536_MHZ;
+		break;
+	case 1:
+		msm_spkr_i2s_osr_clock_rate = Q6AFE_LPASS_OSR_CLK_3_P072_MHZ;
+		break;
+	case 2:
+		msm_spkr_i2s_osr_clock_rate = Q6AFE_LPASS_OSR_CLK_6_P144_MHZ;
+		break;
+	case 3:
+		msm_spkr_i2s_osr_clock_rate = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+		break;
+	default:
+		msm_spkr_i2s_osr_clock_rate = Q6AFE_LPASS_OSR_CLK_12_P288_MHZ;
+		break;
+	}
+	pr_debug("%s: msm_spkr_i2s_osr_clock_rate = %d\n",
+		__func__, msm_spkr_i2s_osr_clock_rate);
 	return 0;
 }
 
@@ -3926,6 +3969,22 @@ static int apq8096_mi2s_snd_startup(struct snd_pcm_substream *substream)
 				__func__, ret);
 			goto err;
 		}
+
+		spkr_i2s_osr_rx_clk.enable = 1;
+		spkr_i2s_osr_rx_clk.clk_freq_in_hz = msm_spkr_i2s_osr_clock_rate;
+
+		pr_debug("%s: osr clock freq =%d\n",
+			__func__,  spkr_i2s_osr_rx_clk.clk_freq_in_hz);
+
+		ret = afe_set_lpass_clock_v2(AUDIO_PORT_ID_I2S_RX,
+			&spkr_i2s_osr_rx_clk);
+
+		if (ret < 0) {
+			pr_err("%s: afe osr lpass clock failed, err:%d\n",
+				__func__, ret);
+			goto err;
+		}
+
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 		if (ret < 0)
 			pr_err("%s: set fmt cpu dai failed, err:%d\n",
@@ -3982,6 +4041,13 @@ static void apq8096_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 					&spkr_i2s_rx_clk);
 		if (ret < 0)
 			pr_err("%s: afe lpass clock failed, err:%d\n",
+				__func__, ret);
+
+		spkr_i2s_osr_rx_clk.enable = 0;
+		ret = afe_set_lpass_clock_v2(AUDIO_PORT_ID_I2S_RX,
+					&spkr_i2s_osr_rx_clk);
+		if (ret < 0)
+			pr_err("%s: afe osr lpass clock failed, err:%d\n",
 				__func__, ret);
 		break;
 	default:
@@ -4609,6 +4675,7 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, spkr_i2s_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, spkr_i2s_bit_format_text),
 	SOC_ENUM_SINGLE_EXT(3, spkr_i2s_rate_text),
+	SOC_ENUM_SINGLE_EXT(4, spkr_i2s_osr_clock_rate_text),
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -4629,6 +4696,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_spkr_i2s_rx_bit_format_put),
 	SOC_ENUM_EXT("AUDIO_I2S_RX SampleRate", msm_snd_enum[17],
 			msm_spkr_i2s_rate_get, msm_spkr_i2s_rate_put),
+	SOC_ENUM_EXT("AUDIO_I2S_RX OsrClockRate", msm_snd_enum[18],
+			msm_spkr_i2s_osr_clock_rate_get, msm_spkr_i2s_osr_clock_rate_put),
 	SOC_ENUM_EXT("PRI_TDM_TX_0 Channels", msm_snd_enum[5],
 			msm_pri_tdm_tx_0_ch_get, msm_pri_tdm_tx_0_ch_put),
 	SOC_ENUM_EXT("PRI_TDM_TX_1 Channels", msm_snd_enum[5],
