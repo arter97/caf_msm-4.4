@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -202,9 +202,18 @@ extern int cnss_wlan_register_driver(struct cnss_wlan_driver *driver);
 extern void cnss_wlan_unregister_driver(struct cnss_wlan_driver *driver);
 extern void cnss_device_crashed(struct device *dev);
 #ifdef CONFIG_PCI_MSM
+extern int cnss_pci_prevent_l1(struct device *dev);
+extern void cnss_pci_allow_l1(struct device *dev);
 extern int cnss_pci_link_down(struct device *dev);
 extern int cnss_wlan_pm_control(struct device *dev, bool vote);
 #else /* CONFIG_PCI_MSM */
+static inline int cnss_pci_prevent_l1(struct device *dev)
+{
+	return 0;
+}
+static inline void cnss_pci_allow_l1(struct device *dev)
+{
+}
 static inline int cnss_pci_link_down(struct device *dev)
 {
 	return 0;
