@@ -1288,6 +1288,7 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 		return rc;
 	}
 
+	mutex_lock(&cci_dev->mutex);
 	if (cci_dev->ref_count++) {
 		CDBG("%s ref_count %d\n", __func__, cci_dev->ref_count);
 		master = c_ctrl->cci_info->cci_i2c_master;
@@ -1328,8 +1329,10 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 				mutex_q[PRIORITY_QUEUE]);
 			mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 		}
+		mutex_unlock(&cci_dev->mutex);
 		return 0;
 	}
+	mutex_unlock(&cci_dev->mutex);
 	ret = msm_cci_pinctrl_init(cci_dev);
 	if (ret < 0) {
 		pr_err("%s:%d Initialization of pinctrl failed\n",
@@ -1486,7 +1489,9 @@ clk_enable_failed:
 	msm_camera_request_gpio_table(cci_dev->cci_gpio_tbl,
 		cci_dev->cci_gpio_tbl_size, 0);
 request_gpio_failed:
+	mutex_lock(&cci_dev->mutex);
 	cci_dev->ref_count--;
+	mutex_unlock(&cci_dev->mutex);
 	if (cam_config_ahb_clk(NULL, 0, CAM_AHB_CLIENT_CCI,
 		CAM_AHB_SUSPEND_VOTE) < 0)
 		pr_err("%s: failed to remove vote for AHB\n", __func__);
@@ -1499,17 +1504,25 @@ static int32_t msm_cci_release(struct v4l2_subdev *sd)
 	struct cci_device *cci_dev;
 
 	cci_dev = v4l2_get_subdevdata(sd);
+	mutex_lock(&cci_dev->mutex);
 	if (!cci_dev->ref_count || cci_dev->cci_state != CCI_STATE_ENABLED) {
 		pr_err("%s invalid ref count %d / cci state %d\n",
 			__func__, cci_dev->ref_count, cci_dev->cci_state);
+		mutex_unlock(&cci_dev->mutex);
 		rc = -EINVAL;
 		goto ahb_vote_suspend;
 	}
+	mutex_unlock(&cci_dev->mutex);
+
+	mutex_lock(&cci_dev->mutex);
 	if (--cci_dev->ref_count) {
 		CDBG("%s ref_count Exit %d\n", __func__, cci_dev->ref_count);
+		mutex_unlock(&cci_dev->mutex);
 		rc = 0;
 		goto ahb_vote_suspend;
 	}
+	mutex_unlock(&cci_dev->mutex);
+
 	for (i = 0; i < MASTER_MAX; i++)
 		if (cci_dev->write_wq[i])
 			flush_workqueue(cci_dev->write_wq[i]);
@@ -1816,8 +1829,9 @@ static void msm_cci_init_cci_params(struct cci_device *new_cci_dev)
 			mutex_init(&new_cci_dev->cci_master_info[i].mutex_q[j]);
 			init_completion(&new_cci_dev->
 				cci_master_info[i].report_q[j]);
-			}
+		}
 	}
+	mutex_init(&new_cci_dev->mutex);
 }
 
 static int32_t msm_cci_init_gpio_params(struct cci_device *cci_dev)
