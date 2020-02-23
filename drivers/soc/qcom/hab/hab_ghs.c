@@ -277,9 +277,8 @@ void hab_hypervisor_unregister(void)
 {
 	pr_debug("total %d\n", hab_driver.ndevices);
 
-	hab_hypervisor_unregister_common();
-
 	ghs_vmm_plugin_info.curr = 0;
+	pr_info("unregistration is called, but do nothing\n");
 }
 
 int hab_hypervisor_register(void)
