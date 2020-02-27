@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -277,9 +277,8 @@ void hab_hypervisor_unregister(void)
 {
 	pr_debug("total %d\n", hab_driver.ndevices);
 
-	hab_hypervisor_unregister_common();
-
 	ghs_vmm_plugin_info.curr = 0;
+	pr_debug("unregistration is called, but do nothing\n");
 }
 
 int hab_hypervisor_register(void)
