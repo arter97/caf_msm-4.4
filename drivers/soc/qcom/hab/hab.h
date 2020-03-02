@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -385,6 +385,11 @@ struct virtual_channel {
 	 */
 	int closed;
 	int forked; /* if fork is detected and assume only once */
+
+	/* stats */
+	uint64_t tx_cnt; /* total succeeded tx */
+	uint64_t rx_cnt; /* total succeeded rx */
+	int rx_inflight; /* rx in progress/blocking */
 };
 
 /*
