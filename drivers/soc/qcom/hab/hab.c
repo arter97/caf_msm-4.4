@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -608,6 +608,9 @@ long hab_vchan_send(struct uhab_context *ctx,
 
 		schedule();
 	}
+
+	if (!ret && !vchan->otherend_closed)
+		vchan->tx_cnt++;
 err:
 	if (vchan)
 		hab_vchan_put(vchan);
@@ -628,9 +631,11 @@ int hab_vchan_recv(struct uhab_context *ctx,
 	vchan = hab_get_vchan_fromvcid(vcid, ctx, 1); /* to drain local q */
 	if (!vchan) {
 		pr_err("vcid %X vchan 0x%pK ctx %pK\n", vcid, vchan, ctx);
+		*message = NULL;
 		return -ENODEV;
 	}
 
+	vchan->rx_inflight = 1;
 	if (nonblocking_flag) {
 		/*
 		 * Try to pull data from the ring in this context instead of
@@ -648,7 +653,10 @@ int hab_vchan_recv(struct uhab_context *ctx,
 			ret = -ENODEV;
 		else if (ret == -ERESTARTSYS)
 			ret = -EINTR;
-	}
+	} else if (!ret)
+		vchan->rx_cnt++;
+
+	vchan->rx_inflight = 0;
 
 	hab_vchan_put(vchan);
 	return ret;
