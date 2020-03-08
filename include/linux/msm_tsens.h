@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2015, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -111,6 +111,7 @@ int tsens_get_mtc_zone_history(unsigned int zone , void *zone_hist);
  *		0 on success else error code on error.
  */
 int tsens_get_temp(struct tsens_device *dev, int *temp);
+void disable_tsens_interrupts(bool disable);
 #else
 static inline int tsens_is_ready(void)
 { return -ENXIO; }
@@ -134,6 +135,7 @@ static inline int tsens_get_temp(struct tsens_device *dev,
 { return -ENXIO; }
 static inline int tsens_get_mtc_zone_history(unsigned int zone, void *zone_hist)
 { return -ENXIO; }
+static inline void disable_tsens_interrupts(bool disable) {}
 #endif
 
 #endif /*MSM_TSENS_H */
