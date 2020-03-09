@@ -1,4 +1,5 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -176,6 +177,8 @@ static int freq_table_get;
 static bool vdd_rstr_enabled;
 static bool vdd_rstr_nodes_called;
 static bool vdd_rstr_probed;
+static bool suspend_vdd_rstr_en;
+static bool thermal_vdd_rstr_en;
 static bool sensor_info_nodes_called;
 static bool sensor_info_probed;
 static bool psm_enabled;
@@ -407,6 +410,7 @@ enum ocr_request {
 	OPTIMUM_CURRENT_NR,
 };
 
+static void msm_thermal_str_update(bool into_suspend);
 static int thermal_config_debugfs_read(struct seq_file *m, void *data);
 static ssize_t thermal_config_debugfs_write(struct file *file,
 					const char __user *buffer,
@@ -698,20 +702,20 @@ static int msm_thermal_suspend_callback(
 	switch (action) {
 	case PM_HIBERNATION_PREPARE:
 	case PM_SUSPEND_PREPARE:
-		msm_thermal_update_freq(false, true);
 		in_suspend = true;
 		retry_in_progress = false;
 		cancel_delayed_work_sync(&retry_hotplug_work);
+		msm_thermal_str_update(true);
 		break;
 
 	case PM_POST_HIBERNATION:
 	case PM_POST_SUSPEND:
-		msm_thermal_update_freq(false, false);
 		in_suspend = false;
 		if (hotplug_task)
 			complete(&hotplug_notify_complete);
 		else
 			pr_debug("Hotplug task not initialized\n");
+		msm_thermal_str_update(false);
 		break;
 
 	default:
@@ -2041,6 +2045,12 @@ static ssize_t vdd_rstr_en_store(struct kobject *kobj,
 	if ((val == 0) && (en->enabled == 0))
 		goto done_vdd_rstr_en;
 
+	if (val == 0 && suspend_vdd_rstr_en) {
+		pr_info("Disable restriction is not allowed, STR in progress");
+		thermal_vdd_rstr_en = false;
+		goto done_vdd_rstr_en;
+	}
+
 	for (i = 0; i < rails_cnt; i++) {
 		if (rails[i].freq_req == 1 && freq_table_get)
 			ret = vdd_restriction_apply_freq(&rails[i],
@@ -2554,6 +2564,12 @@ static int vdd_restriction_apply_all(int en)
 	int fail_cnt = 0;
 	int ret = 0;
 
+	if (!en && suspend_vdd_rstr_en) {
+		pr_info("Disable restriction is not allowed, STR in progress");
+		thermal_vdd_rstr_en = false;
+		return -EINVAL;
+	}
+
 	for (i = 0; i < rails_cnt; i++) {
 		if (rails[i].freq_req == 1)
 			if (freq_table_get)
@@ -2727,6 +2743,42 @@ int sensor_mgr_set_threshold(uint32_t zone_id,
 	}
 set_threshold_exit:
 	return ret;
+}
+
+static void msm_thermal_str_update(bool into_suspend)
+{
+	int temp, ret = 0;
+
+	if (into_suspend) {
+		disable_tsens_interrupts(true);
+		mutex_lock(&vdd_rstr_mutex);
+		if (!vdd_rstr_en.enabled)
+			vdd_restriction_apply_all(1);
+		else
+			thermal_vdd_rstr_en = true;
+
+		suspend_vdd_rstr_en = true;
+		mutex_unlock(&vdd_rstr_mutex);
+	} else {
+		ret = therm_get_temp (
+			thresh[MSM_VDD_RESTRICTION].thresh_list[0].sensor_id,
+			thresh[MSM_VDD_RESTRICTION].thresh_list[0].id_type,
+			&temp);
+		if (ret) {
+			pr_err("Unable to read TSENS sensor:%d. err:%d\n",
+			thresh[MSM_VDD_RESTRICTION].thresh_list[0].sensor_id,
+			ret);
+			/* if error happens, let keep temp in triggered state (5C) */
+			temp = msm_thermal_info.vdd_rstr_temp_degC;
+		}
+		mutex_lock(&vdd_rstr_mutex);
+		suspend_vdd_rstr_en = false;
+		if (!thermal_vdd_rstr_en && temp > msm_thermal_info.vdd_rstr_temp_degC)
+			vdd_restriction_apply_all(0);
+		thermal_vdd_rstr_en = false;
+		mutex_unlock(&vdd_rstr_mutex);
+		disable_tsens_interrupts(false);
+	}
 }
 
 static int apply_vdd_mx_restriction(void)
