@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1612,7 +1612,14 @@ static void adv7533_video_setup(struct adv7533 *pdata,
 	adv7533_write(pdata, I2C_ADDR_CEC_DSI, 0x37, ((vbp & 0xF) << 4));
 }
 
-static int adv7533_video_on(void *client, bool on,
+static int adv7533_pre_video_on(void *client, bool on,
+	struct msm_dba_video_cfg *cfg, u32 flags)
+{
+	pr_err("%s: Inside pre_video_on \n",__func__);
+	return 0;
+}
+
+static int adv7533_post_video_on(void *client, bool on,
 	struct msm_dba_video_cfg *cfg, u32 flags)
 {
 	int ret = 0;
@@ -1996,7 +2003,8 @@ static int adv7533_register_dba(struct adv7533 *pdata)
 	dev_ops = &pdata->dev_info.dev_ops;
 
 	client_ops->power_on        = adv7533_power_on;
-	client_ops->video_on        = adv7533_video_on;
+	client_ops->pre_video_on    = adv7533_pre_video_on;
+	client_ops->post_video_on   = adv7533_post_video_on;
 	client_ops->configure_audio = adv7533_configure_audio;
 	client_ops->hdcp_enable     = adv7533_hdcp_enable;
 	client_ops->hdmi_cec_on     = adv7533_cec_enable;

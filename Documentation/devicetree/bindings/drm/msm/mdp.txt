@@ -14,6 +14,8 @@ Optional properties:
  "dma2", "dma3", "cursor0", "cursor1".
 - qcom,plane-type: virtual plane type. It could be "primary", "overlay",
  "cursor".
+- qcom,mdss-dsi-builtin-bridge-pos: An integer value indicates where to attach the built-in
+ DSI bridge in the bridge chain when external bridges exist.
 
 Example:
 

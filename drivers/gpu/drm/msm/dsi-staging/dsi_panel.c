@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2017,2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2017,2019-2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -596,6 +596,9 @@ static int dsi_panel_parse_lane_states(struct dsi_host_common_cfg *host,
 		pr_err("[%s] No data lanes are enabled, rc=%d\n", name, rc);
 		rc = -EINVAL;
 	}
+
+	host->builtin_bridge_pos = of_property_read_bool(of_node,
+					     "qcom,mdss-dsi-builtin-bridge-pos");
 
 	return rc;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015,2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015,2018,2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -382,7 +382,8 @@ struct msm_dba_video_cfg {
  *	      the power regulators and bringing the chip out of reset. Chip
  *	      should be capable of raising interrupts at this point.
  *	      DEFER and ASYNC flags are supported.
- * @video_on: turn on/off video stream. This function also requires the video
+ * @pre_video_on: initialize all the CSR registers to their appropriate values.
+ * @post_video_on: turn on/off video stream. This function also requires the video
  *	      timing information that might be needed for programming the bridge
  *	      chip.
  *	      DEFER flag is supported.
@@ -498,7 +499,12 @@ struct msm_dba_ops {
 			bool on,
 			u32 flags);
 
-	int (*video_on)(void *client,
+	int (*pre_video_on)(void *client,
+			bool on,
+			struct msm_dba_video_cfg *cfg,
+			u32 flags);
+
+	int (*post_video_on)(void *client,
 			bool on,
 			struct msm_dba_video_cfg *cfg,
 			u32 flags);
