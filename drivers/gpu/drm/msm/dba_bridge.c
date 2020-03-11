@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2018,2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,6 +17,8 @@
 #include "sde_kms.h"
 #include "dba_bridge.h"
 #include "sde/sde_recovery_manager.h"
+#include "dsi-staging/dsi_display.h"
+#include "dsi-staging/dsi_panel.h"
 
 #undef pr_fmt
 #define pr_fmt(fmt)	"dba_bridge:[%s] " fmt, __func__
@@ -155,9 +157,67 @@ error:
 	return ret;
 }
 
+void populate_video_cfg(struct drm_display_mode *mode,struct msm_dba_video_cfg *video_cfg,struct drm_bridge *bridge) {
+	struct hdmi_avi_infoframe avi_frame;
+	struct dba_bridge *d_bridge;
+	int rc = 0;
+	if (!mode || !video_cfg || !bridge) {
+		SDE_ERROR("Invalid params \n");
+		return;
+	}
+	memset(&avi_frame, 0, sizeof(avi_frame));
+	d_bridge = to_dba_bridge(bridge);
+	video_cfg->h_active = mode->hdisplay;
+	video_cfg->v_active = mode->vdisplay;
+	video_cfg->h_front_porch = mode->hsync_start - mode->hdisplay;
+	video_cfg->v_front_porch = mode->vsync_start - mode->vdisplay;
+	video_cfg->h_back_porch = mode->htotal - mode->hsync_end;
+	video_cfg->v_back_porch = mode->vtotal - mode->vsync_end;
+	video_cfg->h_pulse_width = mode->hsync_end - mode->hsync_start;
+	video_cfg->v_pulse_width = mode->vsync_end - mode->vsync_start;
+	video_cfg->pclk_khz = mode->clock;
+	video_cfg->hdmi_mode = d_bridge->hdmi_mode;
+	video_cfg->num_of_input_lanes = d_bridge->num_of_input_lanes;
+	pr_err("populate_video_cfg invoked \n");
+
+	SDE_DEBUG(
+		"video=h[%d,%d,%d,%d] v[%d,%d,%d,%d] pclk=%d hdmi=%d lane=%d\n",
+		video_cfg->h_active, video_cfg->h_front_porch,
+		video_cfg->h_pulse_width, video_cfg->h_back_porch,
+		video_cfg->v_active, video_cfg->v_front_porch,
+		video_cfg->v_pulse_width, video_cfg->v_back_porch,
+		video_cfg->pclk_khz, video_cfg->hdmi_mode,
+		video_cfg->num_of_input_lanes);
+
+	rc = drm_hdmi_avi_infoframe_from_display_mode(&avi_frame, mode);
+	if (rc) {
+		SDE_ERROR("get avi frame failed ret=%d\n", rc);
+	} else {
+		video_cfg->scaninfo = avi_frame.scan_mode;
+		switch (avi_frame.picture_aspect) {
+		case HDMI_PICTURE_ASPECT_4_3:
+			video_cfg->ar = MSM_DBA_AR_4_3;
+			break;
+		case HDMI_PICTURE_ASPECT_16_9:
+			video_cfg->ar = MSM_DBA_AR_16_9;
+			break;
+		default:
+			break;
+		}
+		video_cfg->vic = avi_frame.video_code;
+		DRM_INFO("scaninfo=%d ar=%d vic=%d\n",
+			video_cfg->scaninfo, video_cfg->ar, video_cfg->vic);
+	}
+}
+
 static void _dba_bridge_pre_enable(struct drm_bridge *bridge)
 {
 	struct dba_bridge *d_bridge;
+	struct dsi_display *display;
+	struct dsi_panel *panels;
+	struct msm_dba_video_cfg video_cfg;
+	struct drm_display_mode *mode;
+	int i;
 
 	if (!bridge) {
 		SDE_ERROR("Invalid params\n");
@@ -165,10 +225,23 @@ static void _dba_bridge_pre_enable(struct drm_bridge *bridge)
 	}
 
 	d_bridge = to_dba_bridge(bridge);
+	memset(&video_cfg, 0, sizeof(video_cfg));
+	mode = &d_bridge->mode;
+	display =(struct dsi_display*)d_bridge->display;
 
 	/* Skip power_on calling when splash is enabled in bootloader. */
-	if ((d_bridge->ops.power_on) && (!d_bridge->cont_splash_enabled))
-		d_bridge->ops.power_on(d_bridge->dba_ctx, true, 0);
+	for (i=0;i<display->panel_count;i++) {
+		panels = display->panel[i];
+		if (!panels->host_config.builtin_bridge_pos) {
+			if ((d_bridge->ops.power_on) && (!d_bridge->cont_splash_enabled))
+				d_bridge->ops.power_on(d_bridge->dba_ctx, true, 0);
+		} else {
+			if ((d_bridge->ops.pre_video_on) && (!d_bridge->cont_splash_enabled)) {
+				populate_video_cfg(mode,&video_cfg,bridge);
+				d_bridge->ops.pre_video_on(d_bridge->dba_ctx, true,&video_cfg,0);
+		}
+		}
+	}
 }
 
 static void _dba_bridge_enable(struct drm_bridge *bridge)
@@ -177,60 +250,19 @@ static void _dba_bridge_enable(struct drm_bridge *bridge)
 	struct dba_bridge *d_bridge = to_dba_bridge(bridge);
 	struct msm_dba_video_cfg video_cfg;
 	struct drm_display_mode *mode;
-	struct hdmi_avi_infoframe avi_frame;
 
 	if (!bridge) {
 		SDE_ERROR("Invalid params\n");
 		return;
 	}
 
-	memset(&video_cfg, 0, sizeof(video_cfg));
-	memset(&avi_frame, 0, sizeof(avi_frame));
 	mode = &d_bridge->mode;
-	video_cfg.h_active = mode->hdisplay;
-	video_cfg.v_active = mode->vdisplay;
-	video_cfg.h_front_porch = mode->hsync_start - mode->hdisplay;
-	video_cfg.v_front_porch = mode->vsync_start - mode->vdisplay;
-	video_cfg.h_back_porch = mode->htotal - mode->hsync_end;
-	video_cfg.v_back_porch = mode->vtotal - mode->vsync_end;
-	video_cfg.h_pulse_width = mode->hsync_end - mode->hsync_start;
-	video_cfg.v_pulse_width = mode->vsync_end - mode->vsync_start;
-	video_cfg.pclk_khz = mode->clock;
-	video_cfg.hdmi_mode = d_bridge->hdmi_mode;
-	video_cfg.num_of_input_lanes = d_bridge->num_of_input_lanes;
-
-	SDE_DEBUG(
-		"video=h[%d,%d,%d,%d] v[%d,%d,%d,%d] pclk=%d hdmi=%d lane=%d\n",
-		video_cfg.h_active, video_cfg.h_front_porch,
-		video_cfg.h_pulse_width, video_cfg.h_back_porch,
-		video_cfg.v_active, video_cfg.v_front_porch,
-		video_cfg.v_pulse_width, video_cfg.v_back_porch,
-		video_cfg.pclk_khz, video_cfg.hdmi_mode,
-		video_cfg.num_of_input_lanes);
-
-	rc = drm_hdmi_avi_infoframe_from_display_mode(&avi_frame, mode);
-	if (rc) {
-		SDE_ERROR("get avi frame failed ret=%d\n", rc);
-	} else {
-		video_cfg.scaninfo = avi_frame.scan_mode;
-		switch (avi_frame.picture_aspect) {
-		case HDMI_PICTURE_ASPECT_4_3:
-			video_cfg.ar = MSM_DBA_AR_4_3;
-			break;
-		case HDMI_PICTURE_ASPECT_16_9:
-			video_cfg.ar = MSM_DBA_AR_16_9;
-			break;
-		default:
-			break;
-		}
-		video_cfg.vic = avi_frame.video_code;
-		DRM_INFO("scaninfo=%d ar=%d vic=%d\n",
-			video_cfg.scaninfo, video_cfg.ar, video_cfg.vic);
-	}
+	memset(&video_cfg, 0, sizeof(video_cfg));
 
 	/* Skip video_on calling if splash is enabled in bootloader. */
-	if ((d_bridge->ops.video_on) && (!d_bridge->cont_splash_enabled)) {
-		rc = d_bridge->ops.video_on(d_bridge->dba_ctx, true,
+	if ((d_bridge->ops.post_video_on) && (!d_bridge->cont_splash_enabled)) {
+		populate_video_cfg(mode,&video_cfg,bridge);
+		rc = d_bridge->ops.post_video_on(d_bridge->dba_ctx, true,
 						&video_cfg, 0);
 		if (rc)
 			SDE_ERROR("video on failed ret=%d\n", rc);
@@ -247,8 +279,8 @@ static void _dba_bridge_disable(struct drm_bridge *bridge)
 		return;
 	}
 
-	if (d_bridge->ops.video_on) {
-		rc = d_bridge->ops.video_on(d_bridge->dba_ctx,
+	if (d_bridge->ops.post_video_on) {
+		rc = d_bridge->ops.post_video_on(d_bridge->dba_ctx,
 				false, NULL, 0);
 		if (rc)
 			SDE_ERROR("video off failed ret=%d\n", rc);
@@ -318,6 +350,10 @@ static void _dba_bridge_mode_set(struct drm_bridge *bridge,
 				struct drm_display_mode *adjusted_mode)
 {
 	struct dba_bridge *d_bridge = to_dba_bridge(bridge);
+	struct dsi_display *display;
+	int i;
+	struct dsi_panel *panels;
+	display =(struct dsi_display*)d_bridge->display;
 
 	if (!bridge || !mode || !adjusted_mode || !d_bridge) {
 		SDE_ERROR("Invalid params\n");
@@ -334,6 +370,15 @@ static void _dba_bridge_mode_set(struct drm_bridge *bridge,
 	d_bridge->mode.hsync_end /= d_bridge->panel_count;
 	d_bridge->mode.htotal /= d_bridge->panel_count;
 	d_bridge->mode.clock /= d_bridge->panel_count;
+	for (i=0;i<display->panel_count;i++) {
+		panels = display->panel[i];
+		if (panels->host_config.builtin_bridge_pos) {
+			if ((d_bridge->ops.power_on) && (!d_bridge->cont_splash_enabled)) {
+				pr_err("mode_set power on called \n");
+				d_bridge->ops.power_on(d_bridge->dba_ctx, true, 0);
+			}
+		}
+	}
 }
 
 static bool _dba_bridge_mode_fixup(struct drm_bridge *bridge,
@@ -367,6 +412,9 @@ struct drm_bridge *dba_bridge_init(struct drm_device *dev,
 	int rc = 0;
 	struct dba_bridge *bridge;
 	struct msm_drm_private *priv = NULL;
+	struct dsi_display *display;
+	struct dsi_panel *panels;
+	int i;
 
 	if (!dev || !encoder || !data) {
 		SDE_ERROR("dev=%pK or encoder=%pK or data=%pK is NULL\n",
@@ -403,6 +451,7 @@ struct drm_bridge *dba_bridge_init(struct drm_device *dev,
 	bridge->base.funcs = &_dba_bridge_ops;
 	bridge->base.encoder = encoder;
 	bridge->cont_splash_enabled = data->cont_splash_enabled;
+	display = (struct dsi_display *)bridge->display;
 
 	rc = drm_bridge_attach(dev, &bridge->base);
 	if (rc) {
@@ -412,8 +461,15 @@ struct drm_bridge *dba_bridge_init(struct drm_device *dev,
 
 	if (data->precede_bridge) {
 		/* Insert current bridge */
-		bridge->base.next = data->precede_bridge->next;
-		data->precede_bridge->next = &bridge->base;
+		for (i=0;i< display->panel_count;i++) {
+			panels = display->panel[i];
+			if (panels->host_config.builtin_bridge_pos) {
+				bridge->base.next = data->precede_bridge;
+		} else {
+				bridge->base.next = data->precede_bridge->next;
+				data->precede_bridge->next = &bridge->base;
+		}
+		}
 	} else {
 		encoder->bridge = &bridge->base;
 	}

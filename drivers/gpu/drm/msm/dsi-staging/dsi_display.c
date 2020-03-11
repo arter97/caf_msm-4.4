@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2226,6 +2226,9 @@ int dsi_display_drm_bridge_init(struct dsi_display *display,
 			}
 			priv->bridges[priv->num_bridges++] = dba_bridge;
 			precede_bridge = dba_bridge;
+			if (panel->host_config.builtin_bridge_pos) {
+				enc->bridge = dba_bridge;
+			}
 		}
 	}
 
