@@ -27,6 +27,7 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <soc/qcom/subsystem_restart.h>
+#include <soc/qcom/subsystem_notif.h>
 #include <soc/qcom/scm.h>
 #include <sound/apr_audio-v2.h>
 #include <soc/qcom/smd.h>
@@ -911,6 +912,36 @@ done:
 	return NOTIFY_OK;
 }
 
+static int apr_adsp_state_callback(struct notigier_block *nb,
+					unsigned long value, void *priv)
+{
+
+	pr_debug("%s: Receivced subsys event %d\n", __func__, value);
+	switch (value) {
+	case SUBSYS_AFTER_SHUTDOWN:
+		/*
+		 * Use flag to ignore down notifications during
+		 * initial boot. There is no benefit from error
+		 * recovery notifications during initial boot
+		 * up since everything is expected to be down.
+		 */
+		if (is_initial_boot) {
+			is_initial_boot = false;
+			break;
+		}
+		apr_adsp_down(AUDIO_NOTIFIER_SERVICE_DOWN);
+		break;
+	case SUBSYS_AFTER_POWERUP:
+		is_initial_boot = false;
+		apr_adsp_up();
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
 static struct notifier_block adsp_service_nb = {
 	.notifier_call  = apr_notifier_service_cb,
 	.priority = 0,
@@ -919,6 +950,11 @@ static struct notifier_block adsp_service_nb = {
 static struct notifier_block modem_service_nb = {
 	.notifier_call  = apr_notifier_service_cb,
 	.priority = 0,
+};
+
+static struct notifier_block adsp_state_notifier_block = {
+    .notifier_call = apr_adsp_state_callback,
+    .priority = -INT_MAX,
 };
 
 static int __init apr_init(void)
@@ -945,11 +981,14 @@ static int __init apr_init(void)
 		pr_err("%s: Unable to create ipc log context\n", __func__);
 
 	is_initial_boot = true;
+#ifdef CONFIG_MSM_QDSP6_NOTIFIER
 	subsys_notif_register("apr_adsp", AUDIO_NOTIFIER_ADSP_DOMAIN,
 			      &adsp_service_nb);
 	subsys_notif_register("apr_modem", AUDIO_NOTIFIER_MODEM_DOMAIN,
 			      &modem_service_nb);
-
+#else
+	subsys_notif_register_notifier("adsp", &adsp_state_notifier_block);
+#endif
 	return 0;
 }
 device_initcall(apr_init);
