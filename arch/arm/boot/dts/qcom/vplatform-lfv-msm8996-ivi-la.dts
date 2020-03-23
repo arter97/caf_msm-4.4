@@ -262,16 +262,16 @@
 };
 
 &usb2s {
-	status = "okay";
+	status = "disabled";
 	qcom,no-wakeup-src-in-hostmode;
 };
 
 &qusb_phy1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &usb_nop_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &usb_detect {
