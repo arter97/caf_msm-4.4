@@ -69,7 +69,7 @@ module_param(bss_entries_limit, int, 0644);
 MODULE_PARM_DESC(bss_entries_limit,
                  "limit to number of scan BSS entries (per wiphy, default 1000)");
 
-#define IEEE80211_SCAN_RESULT_EXPIRE	(7 * HZ)
+#define IEEE80211_SCAN_RESULT_EXPIRE	(30 * HZ)
 
 static void bss_free(struct cfg80211_internal_bss *bss)
 {
@@ -1361,6 +1361,8 @@ int cfg80211_wext_siwscan(struct net_device *dev,
 	for (i = 0; i < IEEE80211_NUM_BANDS; i++)
 		if (wiphy->bands[i])
 			creq->rates[i] = (1 << wiphy->bands[i]->n_bitrates) - 1;
+
+	eth_broadcast_addr(creq->bssid);
 
 	rdev->scan_req = creq;
 	err = rdev_scan(rdev, creq);

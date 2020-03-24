@@ -13,6 +13,7 @@ config ARM64
 	select ARCH_WANT_OPTIONAL_GPIOLIB
 	select ARCH_WANT_COMPAT_IPC_PARSE_VERSION
 	select ARCH_WANT_FRAME_POINTERS
+	select ARCH_HAVE_CUSTOM_GPIO_H
 	select ARCH_HAS_UBSAN_SANITIZE_ALL
 	select ARM_AMBA
 	select ARM_ARCH_TIMER
@@ -24,12 +25,13 @@ config ARM64
 	select ARM_PSCI_FW
 	select BUILDTIME_EXTABLE_SORT
 	select CLONE_BACKWARDS
-	select COMMON_CLK
+	select COMMON_CLK if !ARCH_QCOM
 	select CPU_PM if (SUSPEND || CPU_IDLE)
 	select DCACHE_WORD_ACCESS
 	select EDAC_SUPPORT
 	select FRAME_POINTER
 	select GENERIC_ALLOCATOR
+	select EDAC_SUPPORT
 	select GENERIC_CLOCKEVENTS
 	select GENERIC_CLOCKEVENTS_BROADCAST
 	select GENERIC_CPU_AUTOPROBE
@@ -82,9 +84,12 @@ config ARM64
 	select HAVE_PERF_EVENTS
 	select HAVE_PERF_REGS
 	select HAVE_PERF_USER_STACK_DUMP
+	select HAVE_REGS_AND_STACK_ACCESS_API
 	select HAVE_RCU_TABLE_FREE
 	select HAVE_SYSCALL_TRACEPOINTS
-	select IOMMU_DMA if IOMMU_SUPPORT
+	select IOMMU_DMA if (IOMMU_SUPPORT && !ARCH_QCOM)
+	select HAVE_KPROBES
+	select HAVE_KRETPROBES if HAVE_KPROBES
 	select IRQ_DOMAIN
 	select IRQ_FORCED_THREADING
 	select MODULES_USE_ELF_RELA
@@ -98,6 +103,7 @@ config ARM64
 	select SPARSE_IRQ
 	select SYSCTL_EXCEPTION_TRACE
 	select HAVE_CONTEXT_TRACKING
+	select HAVE_ARM_SMCCC
 	select THREAD_INFO_IN_TASK
 	select HAVE_ARM_SMCCC
 	help
@@ -197,6 +203,42 @@ config NEED_SG_DMA_LENGTH
 config SMP
 	def_bool y
 
+config HOTPLUG_SIZE_BITS
+	int "Memory hotplug block size(28 => 256MB 30 => 1GB)"
+	depends on SPARSEMEM
+	default 30
+	help
+	 Selects granularity of hotplug memory. Block
+	 size for memory hotplug is represent as a power
+	 of 2.
+	 If unsure, stick with default value.
+
+config ARM64_DMA_USE_IOMMU
+	bool
+	select ARM_HAS_SG_CHAIN
+	select NEED_SG_DMA_LENGTH
+
+if ARM64_DMA_USE_IOMMU
+
+config ARM64_DMA_IOMMU_ALIGNMENT
+	int "Maximum PAGE_SIZE order of alignment for DMA IOMMU buffers"
+	range 4 9
+	default 9
+	help
+	  DMA mapping framework by default aligns all buffers to the smallest
+	  PAGE_SIZE order which is greater than or equal to the requested buffer
+	  size. This works well for buffers up to a few hundreds kilobytes, but
+	  for larger buffers it just a waste of address space. Drivers which has
+	  relatively small addressing window (like 64Mib) might run out of
+	  virtual space with just a few allocations.
+
+	  With this parameter you can specify the maximum PAGE_SIZE order for
+	  DMA IOMMU buffers. Larger buffers will be aligned only to this
+	  specified order. The order is expressed as a power of two multiplied
+	  by the PAGE_SIZE.
+
+endif
+
 config SWIOTLB
 	def_bool y
 
@@ -217,6 +259,24 @@ config PGTABLE_LEVELS
 	default 3 if ARM64_4K_PAGES && ARM64_VA_BITS_39
 	default 3 if ARM64_16K_PAGES && ARM64_VA_BITS_47
 	default 4 if !ARM64_64K_PAGES && ARM64_VA_BITS_48
+
+config MSM_GVM
+	bool "Enable virtualization Support for MSM kernel"
+	help
+	  This enables support for MSM Kernel based virtual
+	  machine for any platform.
+	  This helps to enable virtual driver support.
+	  This should work on 64bit machine.
+	  If you don't know what to do here, say N.
+
+config MSM_GVM_QUIN
+	bool "Enable virtualization Support for MSM kernel required for QUIN platform"
+	help
+		This enables support for MSM Kernel based virtual
+		machine for QUIN platform.
+		This helps to enable virtual driver support.
+		This should work on 64bit machine.
+		If you don't know what to do here, say N.
 
 source "init/Kconfig"
 
@@ -496,6 +556,25 @@ config ARM64_16K_PAGES
 	  requires applications compiled with 16K (or a multiple of 16K)
 	  aligned segments.
 
+config ARM64_DCACHE_DISABLE
+	bool "Disable CPU Data Caches"
+	help
+	  Disable CPU data cache usage by setting the SCTLR[C] bit during
+	  kernel initialization. This will result in a considerable
+	  performance impact, but may be useful in certain situations.
+
+	  If you are not sure what to do, select 'N' here.
+
+config ARM64_ICACHE_DISABLE
+	bool "Disable CPU Instruction Caches"
+	help
+	  Disable CPU instruction cache usage by setting the SCTLR[I]
+	  bit during kernel initialization. This will result in a
+	  considerable performance impact, but may be useful in certain
+	  situations.
+
+	  If you are not sure what to do, select 'N' here.
+
 config ARM64_64K_PAGES
 	bool "64KB"
 	help
@@ -505,6 +584,37 @@ config ARM64_64K_PAGES
 	  with 64K aligned segments.
 
 endchoice
+
+config MSM_APP_API
+	bool "API support to enable / disable app settings for MSM8996"
+	depends on ARCH_MSM8996 && (ENABLE_FP_SIMD_SETTINGS || MSM_APP_SETTINGS)
+	help
+	  Add API support to enable / disable the app settings to be used
+	  at runtime. These APIs are used to enable / disable app setting
+	  when specific aarch32 or aarch64 processes are running.
+
+	  If you are not sure what to do, select 'N' here.
+
+config ENABLE_FP_SIMD_SETTINGS
+	bool "Enable FP(Floating Point) Settings for Qualcomm MSM8996"
+	depends on ARCH_MSM8996
+	select MSM_APP_API
+	help
+	  Enable FP(Floating Point) and SIMD settings for the MSM8996 during
+	  the execution of the aarch32 processes and disable these settings
+	  when you switch to the aarch64 processes.
+
+	  If you are not sure what to do, select 'N' here.
+
+config MSM_APP_SETTINGS
+	bool "Support to enable / disable app settings for MSM8996"
+	depends on ARCH_MSM8996
+	select MSM_APP_API
+	help
+	  Expose an interface used by the userspace at runtime to
+	  enable / disable the app specific settings.
+
+	  If you are not sure what to do, select 'N' here.
 
 choice
 	prompt "Virtual address space size"
@@ -577,6 +687,32 @@ config HOTPLUG_CPU
 	  Say Y here to experiment with turning CPUs off and on.  CPUs
 	  can be controlled through /sys/devices/system/cpu.
 
+config ARCH_ENABLE_MEMORY_HOTPLUG
+    depends on !NUMA
+	def_bool y
+
+config ARCH_ENABLE_MEMORY_HOTREMOVE
+	def_bool y
+
+# The GPIO number here must be sorted by descending number. In case of
+# a multiplatform kernel, we just want the highest value required by the
+# selected platforms.
+config ARCH_NR_GPIO
+        int
+        default 1024 if ARCH_TEGRA
+        default 1024 if ARCH_QCOM
+        default 256
+        help
+          Maximum number of GPIOs in the system.
+
+          If unsure, leave the default value.
+
+config QCOM_TLB_EL2_HANDLER
+	bool "Raise TLB conflict exception to EL2"
+	help
+	  This option enables TLB conflict to be handled
+	  by EL2.
+
 source kernel/Kconfig.preempt
 source kernel/Kconfig.hz
 
@@ -603,6 +739,33 @@ config HW_PERF_EVENTS
 	def_bool y
 	depends on ARM_PMU
 
+config ARM64_REG_REBALANCE_ON_CTX_SW
+	bool "Rebalance registers during context switches."
+	def_bool ARCH_MSM8996
+	help
+	 Forcefully re-balance register rename pools on context switches for
+	 improved performance on some devices.
+
+config PERF_EVENTS_USERMODE
+	bool "Enable usermode access for perf events"
+	depends on PERF_EVENTS
+	help
+	  Enable user-mode access to performance counters for perf events.
+	  If enabled, the access permissions allowing CPU performance
+	  counters to be accessed from user-mode are set.
+
+	  If you want user-mode programs to access perf events, say Y
+
+config PERF_EVENTS_RESET_PMU_DEBUGFS
+	bool "Reset PMU via debugfs node"
+	depends on PERF_EVENTS
+	help
+		Enable the debugfs node that can be used to reset PMUs and all
+		state variables associated with PMUs. If enabled, PMU and internal
+		state variable are cleared.
+		If you want to reset PMU and PMU related internal Perf variables
+		via debugfs then say Y.
+
 config SYS_SUPPORTS_HUGETLBFS
 	def_bool y
 
@@ -616,6 +779,10 @@ config ARCH_HAS_CACHE_LINE_SIZE
 	def_bool y
 
 source "mm/Kconfig"
+
+config ARCH_MEMORY_PROBE
+	def_bool y
+	depends on MEMORY_HOTPLUG
 
 config SECCOMP
 	bool "Enable seccomp to safely compute untrusted bytecode"
@@ -673,6 +840,23 @@ config UNMAP_KERNEL_AT_EL0
 	  userspace. This can be defended against by unmapping the kernel
 	  when running in userspace, mapping it back in on exception entry
 	  via a trampoline page in the vector table.
+
+	  If unsure, say Y.
+
+config HARDEN_BRANCH_PREDICTOR
+	bool "Harden the branch predictor against aliasing attacks" if EXPERT
+	default y
+	help
+	  Speculation attacks against some high-performance processors rely on
+	  being able to manipulate the branch predictor for a victim context by
+	  executing aliasing branches in the attacker context.  Such attacks
+	  can be partially mitigated against by clearing internal branch
+	  predictor state and limiting the prediction logic in some situations.
+
+	  This config option will take CPU-specific actions to harden the
+	  branch predictor against aliasing attacks and may rely on specific
+	  instruction sequences or control bits being set by the system
+	  firmware.
 
 	  If unsure, say Y.
 
@@ -755,7 +939,6 @@ menu "ARMv8.1 architectural features"
 
 config ARM64_HW_AFDBM
 	bool "Support for hardware updates of the Access and Dirty page flags"
-	default y
 	help
 	  The ARMv8.1 architecture extensions introduce support for
 	  hardware updates of the access and dirty information in page
@@ -772,7 +955,6 @@ config ARM64_HW_AFDBM
 
 config ARM64_PAN
 	bool "Enable support for Privileged Access Never (PAN)"
-	default y
 	help
 	 Privileged Access Never (PAN; part of the ARMv8.1 Extensions)
 	 prevents the kernel or hypervisor from accessing user-space (EL0)
@@ -800,7 +982,6 @@ endmenu
 
 config ARM64_UAO
 	bool "Enable support for User Access Override (UAO)"
-	default y
 	help
 	  User Access Override (UAO; part of the ARMv8.2 Extensions)
 	  causes the 'unprivileged' variant of the load/store instructions to
@@ -985,6 +1166,11 @@ config BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES
 	  Space separated list of names of dtbs to append when
 	  building a concatenated Image.gz-dtb.
 
+config BUILD_ARM64_DT_OVERLAY
+	bool "enable DT overlay compilation support"
+	depends on OF
+	help
+	  This option enables support for DT overlay compilation.
 endmenu
 
 menu "Userspace binary formats"
@@ -1023,6 +1209,14 @@ endmenu
 menu "Power management options"
 
 source "kernel/power/Kconfig"
+
+config ARCH_HIBERNATION_POSSIBLE
+	def_bool y
+	depends on CPU_PM
+
+config ARCH_HIBERNATION_HEADER
+	def_bool y
+	depends on HIBERNATION
 
 config ARCH_SUSPEND_POSSIBLE
 	def_bool y

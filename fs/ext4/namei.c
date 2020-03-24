@@ -274,7 +274,7 @@ static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
 		struct ext4_filename *fname,
 		struct ext4_dir_entry_2 **res_dir);
 static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
-			     struct dentry *dentry, struct inode *inode);
+			     struct inode *dir, struct inode *inode);
 
 /* checksumming functions */
 void initialize_dirent_tail(struct ext4_dir_entry_tail *t,
@@ -1952,10 +1952,9 @@ static int add_dirent_to_buf(handle_t *handle, struct ext4_filename *fname,
  * directory, and adds the dentry to the indexed directory.
  */
 static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
-			    struct dentry *dentry,
+			    struct inode *dir,
 			    struct inode *inode, struct buffer_head *bh)
 {
-	struct inode	*dir = d_inode(dentry->d_parent);
 	struct buffer_head *bh2;
 	struct dx_root	*root;
 	struct dx_frame	frames[2], *frame;
@@ -2108,8 +2107,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
 		return retval;
 
 	if (ext4_has_inline_data(dir)) {
-		retval = ext4_try_add_inline_entry(handle, &fname,
-						   dentry, inode);
+		retval = ext4_try_add_inline_entry(handle, &fname, dir, inode);
 		if (retval < 0)
 			goto out;
 		if (retval == 1) {
@@ -2119,7 +2117,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
 	}
 
 	if (is_dx(dir)) {
-		retval = ext4_dx_add_entry(handle, &fname, dentry, inode);
+		retval = ext4_dx_add_entry(handle, &fname, dir, inode);
 		if (!retval || (retval != ERR_BAD_DX_DIR))
 			goto out;
 		/* Can we just ignore htree data? */
@@ -2148,7 +2146,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
 
 		if (blocks == 1 && !dx_fallback &&
 		    ext4_has_feature_dir_index(sb)) {
-			retval = make_indexed_dir(handle, &fname, dentry,
+			retval = make_indexed_dir(handle, &fname, dir,
 						  inode, bh);
 			bh = NULL; /* make_indexed_dir releases bh */
 			goto out;
@@ -2183,12 +2181,11 @@ out:
  * Returns 0 for success, or a negative error value
  */
 static int ext4_dx_add_entry(handle_t *handle, struct ext4_filename *fname,
-			     struct dentry *dentry, struct inode *inode)
+			     struct inode *dir, struct inode *inode)
 {
 	struct dx_frame frames[2], *frame;
 	struct dx_entry *entries, *at;
 	struct buffer_head *bh;
-	struct inode *dir = d_inode(dentry->d_parent);
 	struct super_block *sb = dir->i_sb;
 	struct ext4_dir_entry_2 *de;
 	int err;
@@ -2439,7 +2436,8 @@ static int ext4_add_nondir(handle_t *handle,
 	int err = ext4_add_entry(handle, dentry, inode);
 	if (!err) {
 		ext4_mark_inode_dirty(handle, inode);
-		d_instantiate_new(dentry, inode);
+		unlock_new_inode(inode);
+		d_instantiate(dentry, inode);
 		return 0;
 	}
 	drop_nlink(inode);
@@ -2678,7 +2676,8 @@ out_clear_inode:
 	err = ext4_mark_inode_dirty(handle, dir);
 	if (err)
 		goto out_clear_inode;
-	d_instantiate_new(dentry, inode);
+	unlock_new_inode(inode);
+	d_instantiate(dentry, inode);
 	if (IS_DIRSYNC(dir))
 		ext4_handle_sync(handle);
 

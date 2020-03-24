@@ -8,6 +8,7 @@
 #include "configfs.h"
 #include "u_f.h"
 #include "u_os_desc.h"
+#include "debug.h"
 
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
 #include <linux/platform_device.h>
@@ -22,6 +23,7 @@ void acc_disconnect(void);
 static struct class *android_class;
 static struct device *android_device;
 static int index;
+static int gadget_index;
 
 struct device *create_function_device(char *name)
 {
@@ -85,6 +87,7 @@ struct gadget_info {
 	struct usb_composite_driver composite;
 	struct usb_composite_dev cdev;
 	bool use_os_desc;
+	bool unbinding;
 	char b_vendor_code;
 	char qw_sign[OS_STRING_QW_SIGN_LEN];
 	spinlock_t spinlock;
@@ -92,6 +95,8 @@ struct gadget_info {
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
 	bool connected;
 	bool sw_connected;
+	bool suspended;
+	bool sw_suspended;
 	struct work_struct work;
 	struct device *dev;
 #endif
@@ -142,21 +147,28 @@ struct gadget_config_name {
 	struct list_head list;
 };
 
+#define MAX_USB_STRING_LEN	126
+#define MAX_USB_STRING_WITH_NULL_LEN	(MAX_USB_STRING_LEN+1)
+
 static int usb_string_copy(const char *s, char **s_copy)
 {
 	int ret;
 	char *str;
 	char *copy = *s_copy;
 	ret = strlen(s);
-	if (ret > 126)
+	if (ret > MAX_USB_STRING_LEN)
 		return -EOVERFLOW;
 
-	str = kstrdup(s, GFP_KERNEL);
-	if (!str)
-		return -ENOMEM;
+	if (copy) {
+		str = copy;
+	} else {
+		str = kmalloc(MAX_USB_STRING_WITH_NULL_LEN, GFP_KERNEL);
+		if (!str)
+			return -ENOMEM;
+	}
+	strlcpy(str, s, MAX_USB_STRING_WITH_NULL_LEN);
 	if (str[ret - 1] == '\n')
 		str[ret - 1] = '\0';
-	kfree(copy);
 	*s_copy = str;
 	return 0;
 }
@@ -276,9 +288,11 @@ static int unregister_gadget(struct gadget_info *gi)
 	if (!gi->udc_name)
 		return -ENODEV;
 
+	gi->unbinding = true;
 	ret = usb_gadget_unregister_driver(&gi->composite.gadget_driver);
 	if (ret)
 		return ret;
+	gi->unbinding = false;
 	kfree(gi->udc_name);
 	gi->udc_name = NULL;
 	return 0;
@@ -1249,12 +1263,12 @@ static void purge_configs_funcs(struct gadget_info *gi)
 
 		cfg = container_of(c, struct config_usb_cfg, c);
 
-		list_for_each_entry_safe(f, tmp, &c->functions, list) {
+		list_for_each_entry_safe_reverse(f, tmp, &c->functions, list) {
 
-			list_move_tail(&f->list, &cfg->func_list);
+			list_move(&f->list, &cfg->func_list);
 			if (f->unbind) {
 				dev_err(&gi->cdev.gadget->dev, "unbind function"
-						" '%s'/%p\n", f->name, f);
+						" '%s'/%pK\n", f->name, f);
 				f->unbind(c, f);
 			}
 		}
@@ -1416,14 +1430,25 @@ static void android_work(struct work_struct *data)
 	char *disconnected[2] = { "USB_STATE=DISCONNECTED", NULL };
 	char *connected[2]    = { "USB_STATE=CONNECTED", NULL };
 	char *configured[2]   = { "USB_STATE=CONFIGURED", NULL };
-	/* 0-connected 1-configured 2-disconnected*/
-	bool status[3] = { false, false, false };
+	char *suspended[2]    = { "USB_STATE=SUSPENDED", NULL };
+	char *resumed[2]      = { "USB_STATE=RESUMED", NULL };
+	/* 0-connected 1-configured 2-disconnected 3-suspended 4-resumed */
+	bool status[5] = { false, false, false, false, false };
 	unsigned long flags;
 	bool uevent_sent = false;
 
 	spin_lock_irqsave(&cdev->lock, flags);
-	if (cdev->config)
-		status[1] = true;
+	if (cdev->config) {
+		if (gi->suspended != gi->sw_suspended) {
+			if (gi->suspended)
+				status[3] = true;
+			else
+				status[4] = true;
+			gi->sw_suspended = gi->suspended;
+		} else {
+			status[1] = true;
+		}
+	}
 
 	if (gi->connected != gi->sw_connected) {
 		if (gi->connected)
@@ -1431,32 +1456,47 @@ static void android_work(struct work_struct *data)
 		else
 			status[2] = true;
 		gi->sw_connected = gi->connected;
+		gi->suspended = gi->sw_suspended = false;
 	}
 	spin_unlock_irqrestore(&cdev->lock, flags);
 
 	if (status[0]) {
-		kobject_uevent_env(&android_device->kobj,
+		kobject_uevent_env(&gi->dev->kobj,
 					KOBJ_CHANGE, connected);
 		pr_info("%s: sent uevent %s\n", __func__, connected[0]);
 		uevent_sent = true;
 	}
 
 	if (status[1]) {
-		kobject_uevent_env(&android_device->kobj,
+		kobject_uevent_env(&gi->dev->kobj,
 					KOBJ_CHANGE, configured);
 		pr_info("%s: sent uevent %s\n", __func__, configured[0]);
 		uevent_sent = true;
 	}
 
 	if (status[2]) {
-		kobject_uevent_env(&android_device->kobj,
+		kobject_uevent_env(&gi->dev->kobj,
 					KOBJ_CHANGE, disconnected);
 		pr_info("%s: sent uevent %s\n", __func__, disconnected[0]);
 		uevent_sent = true;
 	}
 
+	if (status[3]) {
+		kobject_uevent_env(&gi->dev->kobj,
+					KOBJ_CHANGE, suspended);
+		pr_info("%s: sent uevent %s\n", __func__, suspended[0]);
+		uevent_sent = true;
+	}
+
+	if (status[4]) {
+		kobject_uevent_env(&gi->dev->kobj,
+					KOBJ_CHANGE, resumed);
+		pr_info("%s: sent uevent %s\n", __func__, resumed[0]);
+		uevent_sent = true;
+	}
+
 	if (!uevent_sent) {
-		pr_info("%s: did not send uevent (%d %d %p)\n", __func__,
+		pr_info("%s: did not send uevent (%d %d %pK)\n", __func__,
 			gi->connected, gi->sw_connected, cdev->config);
 	}
 }
@@ -1487,6 +1527,7 @@ static void configfs_composite_unbind(struct usb_gadget *gadget)
 	spin_unlock_irqrestore(&gi->spinlock, flags);
 }
 
+#if !IS_ENABLED(CONFIG_USB_CONFIGFS_UEVENT)
 static int configfs_composite_setup(struct usb_gadget *gadget,
 		const struct usb_ctrlrequest *ctrl)
 {
@@ -1533,6 +1574,7 @@ static void configfs_composite_disconnect(struct usb_gadget *gadget)
 	composite_disconnect(gadget);
 	spin_unlock_irqrestore(&gi->spinlock, flags);
 }
+#endif
 
 static void configfs_composite_suspend(struct usb_gadget *gadget)
 {
@@ -1623,7 +1665,14 @@ static int android_setup(struct usb_gadget *gadget,
 static void android_disconnect(struct usb_gadget *gadget)
 {
 	struct usb_composite_dev        *cdev = get_gadget_data(gadget);
-	struct gadget_info *gi = container_of(cdev, struct gadget_info, cdev);
+	struct gadget_info *gi;
+
+	if (!cdev) {
+		pr_err("%s: gadget is not connected\n", __func__);
+		return;
+	}
+
+	gi = container_of(cdev, struct gadget_info, cdev);
 
 	/* FIXME: There's a race between usb_gadget_udc_stop() which is likely
 	 * to set the gadget driver to NULL in the udc driver and this drivers
@@ -1646,9 +1695,31 @@ static void android_disconnect(struct usb_gadget *gadget)
 	acc_disconnect();
 #endif
 	gi->connected = 0;
-	schedule_work(&gi->work);
+	if (!gi->unbinding)
+		schedule_work(&gi->work);
 	composite_disconnect(gadget);
 }
+
+static void android_suspend(struct usb_composite_dev *cdev)
+{
+	struct gadget_info *gi = container_of(cdev, struct gadget_info, cdev);
+
+	if (!gi->suspended) {
+		gi->suspended = true;
+		schedule_work(&gi->work);
+	}
+}
+
+static void android_resume(struct usb_composite_dev *cdev)
+{
+	struct gadget_info *gi = container_of(cdev, struct gadget_info, cdev);
+
+	if (gi->suspended) {
+		gi->suspended = false;
+		schedule_work(&gi->work);
+	}
+}
+
 #endif
 
 static const struct usb_gadget_driver configfs_driver_template = {
@@ -1711,23 +1782,28 @@ static int android_device_create(struct gadget_info *gi)
 {
 	struct device_attribute **attrs;
 	struct device_attribute *attr;
+	char str[10];
 
 	INIT_WORK(&gi->work, android_work);
-	android_device = device_create(android_class, NULL,
-				MKDEV(0, 0), NULL, "android0");
-	if (IS_ERR(android_device))
-		return PTR_ERR(android_device);
+	snprintf(str, sizeof(str), "android%d", gadget_index - 1);
+	pr_debug("Creating android device %s\n", str);
+	gi->dev = device_create(android_class, NULL,
+				MKDEV(0, 0), NULL, str);
+	if (IS_ERR(gi->dev))
+		return PTR_ERR(gi->dev);
 
-	dev_set_drvdata(android_device, gi);
+	dev_set_drvdata(gi->dev, gi);
+	if (gadget_index == 1)
+		android_device = gi->dev;
 
 	attrs = android_usb_attributes;
 	while ((attr = *attrs++)) {
 		int err;
 
-		err = device_create_file(android_device, attr);
+		err = device_create_file(gi->dev, attr);
 		if (err) {
-			device_destroy(android_device->class,
-				       android_device->devt);
+			device_destroy(gi->dev->class,
+				       gi->dev->devt);
 			return err;
 		}
 	}
@@ -1735,15 +1811,15 @@ static int android_device_create(struct gadget_info *gi)
 	return 0;
 }
 
-static void android_device_destroy(void)
+static void android_device_destroy(struct device *dev)
 {
 	struct device_attribute **attrs;
 	struct device_attribute *attr;
 
 	attrs = android_usb_attributes;
 	while ((attr = *attrs++))
-		device_remove_file(android_device, attr);
-	device_destroy(android_device->class, android_device->devt);
+		device_remove_file(dev, attr);
+	device_destroy(dev->class, dev->devt);
 }
 #else
 static inline int android_device_create(struct gadget_info *gi)
@@ -1751,7 +1827,7 @@ static inline int android_device_create(struct gadget_info *gi)
 	return 0;
 }
 
-static inline void android_device_destroy(void)
+static inline void android_device_destroy(struct device *dev)
 {
 }
 #endif
@@ -1782,14 +1858,17 @@ static struct config_group *gadgets_make(
 
 	gi->composite.bind = configfs_do_nothing;
 	gi->composite.unbind = configfs_do_nothing;
-	gi->composite.suspend = NULL;
-	gi->composite.resume = NULL;
+#ifdef CONFIG_USB_CONFIGFS_UEVENT
+	gi->composite.suspend = android_suspend;
+	gi->composite.resume = android_resume;
+#endif
 	gi->composite.max_speed = USB_SPEED_SUPER;
 
 	spin_lock_init(&gi->spinlock);
 	mutex_init(&gi->lock);
 	INIT_LIST_HEAD(&gi->string_list);
 	INIT_LIST_HEAD(&gi->available_func);
+	spin_lock_init(&gi->spinlock);
 
 	composite_init_dev(&gi->cdev);
 	gi->cdev.desc.bLength = USB_DT_DEVICE_SIZE;
@@ -1804,6 +1883,8 @@ static struct config_group *gadgets_make(
 	if (!gi->composite.gadget_driver.function)
 		goto err;
 
+	gadget_index++;
+	pr_debug("Creating gadget index %d\n", gadget_index);
 	if (android_device_create(gi) < 0)
 		goto err;
 
@@ -1818,8 +1899,14 @@ err:
 
 static void gadgets_drop(struct config_group *group, struct config_item *item)
 {
+	struct gadget_info *gi;
+
+	gi = container_of(to_config_group(item), struct gadget_info, group);
 	config_item_put(item);
-	android_device_destroy();
+	if (gi->dev) {
+		android_device_destroy(gi->dev);
+		gi->dev = NULL;
+	}
 }
 
 static struct configfs_group_operations gadgets_ops = {
@@ -1846,6 +1933,7 @@ void unregister_gadget_item(struct config_item *item)
 {
 	struct gadget_info *gi = to_gadget_info(item);
 
+	/* to protect race with gadget_dev_desc_UDC_store*/
 	mutex_lock(&gi->lock);
 	unregister_gadget(gi);
 	mutex_unlock(&gi->lock);
@@ -1857,6 +1945,8 @@ static int __init gadget_cfs_init(void)
 	int ret;
 
 	config_group_init(&gadget_subsys.su_group);
+
+	debug_debugfs_init();
 
 	ret = configfs_register_subsystem(&gadget_subsys);
 
@@ -1872,6 +1962,7 @@ module_init(gadget_cfs_init);
 
 static void __exit gadget_cfs_exit(void)
 {
+	debug_debugfs_exit();
 	configfs_unregister_subsystem(&gadget_subsys);
 #ifdef CONFIG_USB_CONFIGFS_UEVENT
 	if (!IS_ERR(android_class))

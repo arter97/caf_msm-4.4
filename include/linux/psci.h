@@ -24,6 +24,9 @@ bool psci_tos_resident_on(int cpu);
 bool psci_power_state_loses_context(u32 state);
 bool psci_power_state_is_valid(u32 state);
 
+int psci_cpu_init_idle(unsigned int cpu);
+int psci_cpu_suspend_enter(unsigned long index);
+
 enum psci_conduit {
 	PSCI_CONDUIT_NONE,
 	PSCI_CONDUIT_SMC,
@@ -36,6 +39,7 @@ enum smccc_version {
 };
 
 struct psci_operations {
+	u32 (*get_version)(void);
 	int (*cpu_suspend)(u32 state, unsigned long entry_point);
 	int (*cpu_off)(u32 state);
 	int (*cpu_on)(unsigned long cpuid, unsigned long entry_point);
