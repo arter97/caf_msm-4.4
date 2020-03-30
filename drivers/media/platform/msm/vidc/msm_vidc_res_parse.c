@@ -693,8 +693,17 @@ static int msm_vidc_populate_bus(struct device *dev,
 	struct bus_set *buses = &res->bus_set;
 	const char *temp_name = NULL;
 	struct bus_info *bus = NULL, *temp_table;
+	struct msm_vidc_core *core;
 	u32 range[2];
 	int rc = 0;
+
+	core = dev_get_drvdata(dev->parent);
+	if (!core)
+	{
+		dprintk(VIDC_ERR, "%s: core:%p\n", __func__,core);
+		goto err_bus;
+	}
+	mutex_lock(&core->lock);
 
 	temp_table = krealloc(buses->bus_tbl, sizeof(*temp_table) *
 			(buses->count + 1), GFP_KERNEL);
@@ -759,6 +768,7 @@ static int msm_vidc_populate_bus(struct device *dev,
 	dprintk(VIDC_DBG, "Found bus %s [%d->%d] with governor %s\n",
 			bus->name, bus->master, bus->slave, bus->governor);
 err_bus:
+	mutex_unlock(&core->lock);
 	return rc;
 }
 
