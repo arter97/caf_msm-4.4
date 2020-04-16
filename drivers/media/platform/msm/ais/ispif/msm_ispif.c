@@ -1201,8 +1201,11 @@ static int msm_ispif_stop_frame_boundary(struct ispif_device *ispif,
 					(stop_flag & 0xF) == 0xF,
 					ISPIF_TIMEOUT_SLEEP_US,
 					ISPIF_TIMEOUT_ALL_US);
-		if (rc < 0)
-			pr_err("ISPIF stop frame boundary timeout\n");
+		if (rc < 0) {
+			pr_err("ISPIF stop frame boundary timeout, intf=%d\n",
+				params->entries[i].intftype);
+			goto end;
+		}
 	}
 
 end:
