@@ -288,6 +288,11 @@ static void process_ctl_event(struct work_struct *work)
 
 	einfo = container_of(work, struct edge_info, work);
 
+	if (!einfo->smd_ctl_ch_open) {
+		SMDXPRT_INFO(einfo, "%s Exit-ctl ch closed\n",__func__);
+		return;
+	}
+
 	mutex_lock(&einfo->in_ssr_lock);
 	if (einfo->in_ssr) {
 		einfo->in_ssr = false;
@@ -1518,11 +1523,12 @@ static int ssr(struct glink_transport_if *if_ptr)
 
 	einfo = container_of(if_ptr, struct edge_info, xprt_if);
 
+	einfo->smd_ctl_ch_open = false;
 	einfo->in_ssr = true;
 	synchronize_srcu(&einfo->ssr_sync);
 
-	einfo->smd_ctl_ch_open = false;
-
+	/* flush out the pending control channel events */
+	cancel_work_sync(&einfo->work);
 	spin_lock_irqsave(&einfo->channels_lock, flags);
 	list_for_each_entry(ch, &einfo->channels, node) {
 		spin_unlock_irqrestore(&einfo->channels_lock, flags);
