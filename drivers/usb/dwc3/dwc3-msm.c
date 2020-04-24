@@ -2797,6 +2797,7 @@ static int dwc3_msm_vbus_notifier(struct notifier_block *nb,
 		dwc->gadget.is_selfpowered = self_powered;
 
 	mdwc->vbus_active = event;
+
 	if (dwc->is_drd && !mdwc->in_restart) {
 		dbg_event(0xFF, "Q RW (vbus)", mdwc->vbus_active);
 		pm_stay_awake(mdwc->dev);
@@ -3912,6 +3913,7 @@ set_prop:
 	return 0;
 }
 
+#define DP_PULSE_WIDTH_MSEC 200
 
 /**
  * dwc3_otg_sm_work - workqueue function.
@@ -3977,6 +3979,12 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 		} else if (test_bit(B_SESS_VLD, &mdwc->inputs)) {
 			dev_dbg(mdwc->dev, "b_sess_vld\n");
 			mdwc->float_detected = false;
+			if (get_psy_type(mdwc) == POWER_SUPPLY_TYPE_USB_CDP) {
+				dev_dbg(mdwc->dev, "Connected to CDP, pull DP up\n");
+				usb_phy_drive_dp_pulse(mdwc->hs_phy,
+							DP_PULSE_WIDTH_MSEC);
+			}
+
 			if (get_psy_type(mdwc) == POWER_SUPPLY_TYPE_USB_FLOAT)
 				queue_delayed_work(mdwc->dwc3_wq,
 						&mdwc->sdp_check,

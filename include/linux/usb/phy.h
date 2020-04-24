@@ -129,6 +129,8 @@ struct usb_phy {
 
 	/* return linestate with Idp_src (used for DCD with USB2 PHY) */
 	int (*dpdm_with_idp_src)(struct usb_phy *x);
+
+	int	(*drive_dp_pulse)(struct usb_phy *x, unsigned int pulse_width);
 };
 
 /**
@@ -217,6 +219,15 @@ usb_phy_dpdm_with_idp_src(struct usb_phy *x)
 {
 	if (x && x->dpdm_with_idp_src)
 		return x->dpdm_with_idp_src(x);
+
+	return 0;
+}
+
+static inline int
+usb_phy_drive_dp_pulse(struct usb_phy *x, unsigned int pulse_width)
+{
+	if (x && x->drive_dp_pulse)
+		return x->drive_dp_pulse(x, pulse_width);
 
 	return 0;
 }
