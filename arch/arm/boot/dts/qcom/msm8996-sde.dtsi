@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -538,11 +538,3 @@
 	};
 };
 
-&soc {
-	msm_kms_edrm: qcom,msm_kms_edrm@900000 {
-
-		compatible = "qcom,msm-kms-edrm";
-		contiguous-region = <&cont_splash_mem &cont_splash_mem_hdmi>;
-
-	};
-};
