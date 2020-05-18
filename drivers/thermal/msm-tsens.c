@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1045,6 +1045,32 @@ static int tsens_tm_activate_trip_type(struct thermal_zone_device *thermal,
 
 	return rc;
 }
+
+void disable_tsens_interrupts(bool disable)
+{
+	struct tsens_tm_device *tmdev = NULL;
+	unsigned long flags;
+
+	list_for_each_entry(tmdev, &tsens_device_list, list) {
+		spin_lock_irqsave(&tmdev->tsens_upp_low_lock, flags);
+		if (disable)
+			writel_relaxed(TSENS_TM_CRITICAL_INT_EN,
+				TSENS_TM_INT_EN(tmdev->tsens_addr));
+		else
+			writel_relaxed(TSENS_TM_CRITICAL_INT_EN |
+				TSENS_TM_UPPER_INT_EN | TSENS_TM_LOWER_INT_EN,
+				TSENS_TM_INT_EN(tmdev->tsens_addr));
+		spin_unlock_irqrestore(&tmdev->tsens_upp_low_lock, flags);
+		/* disable / enable  upper-lower interrupt */
+		mb();
+	}
+
+	if (disable)
+		disable_irq_wake(tmdev->tsens_irq);
+	else
+		enable_irq_wake(tmdev->tsens_irq);
+}
+EXPORT_SYMBOL(disable_tsens_interrupts);
 
 static int tsens_tz_activate_trip_type(struct thermal_zone_device *thermal,
 			int trip, enum thermal_trip_activation_mode mode)
