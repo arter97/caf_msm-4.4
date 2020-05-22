@@ -165,6 +165,8 @@ static void msm_cci_flush_queue(struct cci_device *cci_dev,
 {
 	int32_t rc = 0;
 
+	reinit_completion(&cci_dev->cci_master_info[master].reset_complete);
+
 	msm_camera_io_w_mb(1 << master, cci_dev->base + CCI_HALT_REQ_ADDR);
 	rc = wait_for_completion_timeout(
 		&cci_dev->cci_master_info[master].reset_complete, CCI_TIMEOUT);
@@ -172,6 +174,9 @@ static void msm_cci_flush_queue(struct cci_device *cci_dev,
 		pr_err("%s:%d wait failed\n", __func__, __LINE__);
 	} else if (rc == 0) {
 		pr_err("%s:%d wait timeout\n", __func__, __LINE__);
+
+		reinit_completion(&cci_dev->
+			cci_master_info[master].reset_complete);
 
 		/* Set reset pending flag to TRUE */
 		cci_dev->cci_master_info[master].reset_pending = TRUE;
@@ -895,6 +900,9 @@ static int32_t msm_cci_i2c_read(struct v4l2_subdev *sd,
 			+ master * 0x200 + queue * 0x100);
 
 	val = 1 << ((master * 2) + queue);
+
+	reinit_completion(&cci_dev->cci_master_info[master].reset_complete);
+
 	msm_camera_io_w_mb(val, cci_dev->base + CCI_QUEUE_START_ADDR);
 	CDBG("%s:%d E wait_for_completion_timeout\n", __func__,
 		__LINE__);
