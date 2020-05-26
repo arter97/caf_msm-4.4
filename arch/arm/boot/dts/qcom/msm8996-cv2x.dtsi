@@ -143,6 +143,80 @@
 		compatible = "qcom,diagfwd-usb";
 		status = "okay";
 	};
+
+    blsp1_uart1: uart@756F000 { /* BLSP1 UART1 */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0x756F000 0x1000>,
+		    <0x7544000 0x2b000>;
+		status = "ok";
+		reg-names = "core_mem", "bam_mem";
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#address-cells = <0>;
+		interrupt-parent = <&blsp1_uart1>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 0 107 0
+			    1 &intc 0 0 238 0
+			    2 &tlmm 1 0>;
+
+		qcom,inject-rx-on-wakeup;
+		qcom,rx-char-to-inject = <0xFD>;
+
+		qcom,bam-tx-ep-pipe-index = <0>;
+		qcom,bam-rx-ep-pipe-index = <1>;
+		qcom,master-id = <86>;
+		clock-names = "core_clk", "iface_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_uart1_apps_clk>,
+		    <&clock_gcc clk_gcc_blsp1_ahb_clk>;
+		pinctrl-names = "sleep", "default";
+		pinctrl-0 = <&blsp1_uart1_sleep>;
+		pinctrl-1 = <&blsp1_uart1_active>;
+
+		qcom,msm-bus,name = "buart1";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			    <86 512 0 0>,
+			    <86 512 500 800>;
+	};
+
+	blsp2_uart4: uart@75B2000 { /* BLSP1 UART1 */
+		compatible = "qcom,msm-hsuart-v14";
+		reg = <0x75B2000 0x1000>,
+		    <0x7584000 0x2b000>;
+		status = "okay";
+		reg-names = "core_mem", "bam_mem";
+		interrupt-names = "core_irq", "bam_irq", "wakeup_irq";
+		#address-cells = <0>;
+		interrupt-parent = <&blsp2_uart4>;
+		interrupts = <0 1 2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0xffffffff>;
+		interrupt-map = <0 &intc 0 0 116 0
+			    1 &intc 0 0 239 0
+			    2 &tlmm 9 0>;
+
+		qcom,inject-rx-on-wakeup;
+		qcom,rx-char-to-inject = <0xFD>;
+
+		qcom,bam-tx-ep-pipe-index = <6>;
+		qcom,bam-rx-ep-pipe-index = <7>;
+		qcom,master-id = <84>;
+		clock-names = "core_clk", "iface_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_uart4_apps_clk>,
+		    <&clock_gcc clk_gcc_blsp2_ahb_clk>;
+		pinctrl-names = "sleep", "default";
+		pinctrl-0 = <&blsp2_uart4_sleep>;
+		pinctrl-1 = <&blsp2_uart4_active>;
+
+		qcom,msm-bus,name = "buart2";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			    <84 512 0 0>,
+			    <84 512 500 800>;
+	};
 };
 
 /delete-node/ &mdss_mdp;
@@ -170,6 +244,10 @@
 };
 
 &i2c_12 {
+	status = "disabled";
+};
+
+&spi_0 {
 	status = "disabled";
 };
 
