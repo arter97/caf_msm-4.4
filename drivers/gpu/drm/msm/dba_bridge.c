@@ -217,7 +217,7 @@ static void _dba_bridge_pre_enable(struct drm_bridge *bridge)
 	struct dsi_panel *panels;
 	struct msm_dba_video_cfg video_cfg;
 	struct drm_display_mode *mode;
-	int i;
+	int panel_idx;
 
 	if (!bridge) {
 		SDE_ERROR("Invalid params\n");
@@ -229,17 +229,23 @@ static void _dba_bridge_pre_enable(struct drm_bridge *bridge)
 	mode = &d_bridge->mode;
 	display =(struct dsi_display*)d_bridge->display;
 
+	/* In split display case the panel index matches the bridge
+	 * index and panel count is 2,in dual dsi case panel index
+	 * always is 0 and panel count is 1.
+	 */
+	panel_idx = ((d_bridge->id) % (display->panel_count));
+	panels = display->panel[panel_idx];
 	/* Skip power_on calling when splash is enabled in bootloader. */
-	for (i=0;i<display->panel_count;i++) {
-		panels = display->panel[i];
-		if (!panels->host_config.builtin_bridge_pos) {
-			if ((d_bridge->ops.power_on) && (!d_bridge->cont_splash_enabled))
-				d_bridge->ops.power_on(d_bridge->dba_ctx, true, 0);
-		} else {
-			if ((d_bridge->ops.pre_video_on) && (!d_bridge->cont_splash_enabled)) {
-				populate_video_cfg(mode,&video_cfg,bridge);
-				d_bridge->ops.pre_video_on(d_bridge->dba_ctx, true,&video_cfg,0);
-		}
+	if (panels && !panels->host_config.builtin_bridge_pos) {
+		if ((d_bridge->ops.power_on) &&
+			(!d_bridge->cont_splash_enabled))
+			d_bridge->ops.power_on(d_bridge->dba_ctx, true, 0);
+	} else {
+		if ((d_bridge->ops.pre_video_on) &&
+			(!d_bridge->cont_splash_enabled)) {
+			populate_video_cfg(mode, &video_cfg, bridge);
+			d_bridge->ops.pre_video_on(d_bridge->dba_ctx,
+				true, &video_cfg, 0);
 		}
 	}
 }
@@ -351,8 +357,8 @@ static void _dba_bridge_mode_set(struct drm_bridge *bridge,
 {
 	struct dba_bridge *d_bridge = to_dba_bridge(bridge);
 	struct dsi_display *display;
-	int i;
 	struct dsi_panel *panels;
+	int panel_idx;
 	display =(struct dsi_display*)d_bridge->display;
 
 	if (!bridge || !mode || !adjusted_mode || !d_bridge) {
@@ -370,13 +376,17 @@ static void _dba_bridge_mode_set(struct drm_bridge *bridge,
 	d_bridge->mode.hsync_end /= d_bridge->panel_count;
 	d_bridge->mode.htotal /= d_bridge->panel_count;
 	d_bridge->mode.clock /= d_bridge->panel_count;
-	for (i=0;i<display->panel_count;i++) {
-		panels = display->panel[i];
-		if (panels->host_config.builtin_bridge_pos) {
-			if ((d_bridge->ops.power_on) && (!d_bridge->cont_splash_enabled)) {
-				pr_err("mode_set power on called \n");
-				d_bridge->ops.power_on(d_bridge->dba_ctx, true, 0);
-			}
+	/* In split display case the panel index matches the bridge
+	 * index and panel count is 2,in dual dsi case panel index
+	 * always is 0 and panel count is 1.
+	 */
+	panel_idx = ((d_bridge->id) % (display->panel_count));
+	panels = display->panel[panel_idx];
+	if (panels && panels->host_config.builtin_bridge_pos) {
+		if ((d_bridge->ops.power_on) &&
+			(!d_bridge->cont_splash_enabled)) {
+			pr_info("mode_set power on called\n");
+			d_bridge->ops.power_on(d_bridge->dba_ctx, true, 0);
 		}
 	}
 }
@@ -414,7 +424,7 @@ struct drm_bridge *dba_bridge_init(struct drm_device *dev,
 	struct msm_drm_private *priv = NULL;
 	struct dsi_display *display;
 	struct dsi_panel *panels;
-	int i;
+	int panel_idx;
 
 	if (!dev || !encoder || !data) {
 		SDE_ERROR("dev=%pK or encoder=%pK or data=%pK is NULL\n",
@@ -460,15 +470,18 @@ struct drm_bridge *dba_bridge_init(struct drm_device *dev,
 	}
 
 	if (data->precede_bridge) {
+		/* In split display case the panel index matches the bridge
+		 * index and panel count is 2,in dual dsi case panel index
+		 * always is 0 and panel count is 1.
+		 */
+		panel_idx = ((bridge->id) % (display->panel_count));
+		panels = display->panel[panel_idx];
 		/* Insert current bridge */
-		for (i=0;i< display->panel_count;i++) {
-			panels = display->panel[i];
-			if (panels->host_config.builtin_bridge_pos) {
-				bridge->base.next = data->precede_bridge;
+		if (panels && panels->host_config.builtin_bridge_pos) {
+			bridge->base.next = data->precede_bridge;
 		} else {
-				bridge->base.next = data->precede_bridge->next;
-				data->precede_bridge->next = &bridge->base;
-		}
+			bridge->base.next = data->precede_bridge->next;
+			data->precede_bridge->next = &bridge->base;
 		}
 	} else {
 		encoder->bridge = &bridge->base;
