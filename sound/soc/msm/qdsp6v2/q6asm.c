@@ -1203,7 +1203,7 @@ void q6asm_audio_client_free(struct audio_client *ac)
 		pr_err("%s: ac %pK\n", __func__, ac);
 		return;
 	}
-	if (!ac->session) {
+	if ((ac->session <= 0) || (ac->session > ASM_ACTIVE_STREAMS_ALLOWED)) {
 		pr_err("%s: ac session invalid\n", __func__);
 		return;
 	}
@@ -4288,6 +4288,10 @@ int q6asm_run(struct audio_client *ac, uint32_t flags,
 		pr_err("%s: AC APR handle NULL\n", __func__);
 		return -EINVAL;
 	}
+	if ((ac->session <= 0) || (ac->session > ASM_ACTIVE_STREAMS_ALLOWED)) {
+		pr_err("%s: ac session invalid\n", __func__);
+		return -EINVAL;
+	}
 	pr_debug("%s: session[%d]\n", __func__, ac->session);
 
 	q6asm_add_hdr(ac, &run.hdr, sizeof(run), TRUE);
@@ -4342,6 +4346,10 @@ static int __q6asm_run_nowait(struct audio_client *ac, uint32_t flags,
 	}
 	if (ac->apr == NULL) {
 		pr_err("%s: AC APR handle NULL\n", __func__);
+		return -EINVAL;
+	}
+	if ((ac->session <= 0) || (ac->session > ASM_ACTIVE_STREAMS_ALLOWED)) {
+		pr_err("%s: ac session invalid\n", __func__);
 		return -EINVAL;
 	}
 	pr_debug("%s: session[%d]\n", __func__, ac->session);
