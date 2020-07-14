@@ -454,6 +454,9 @@ static struct xhci_ring *xhci_triad_to_transfer_ring(struct xhci_hcd *xhci,
 {
 	struct xhci_virt_ep *ep;
 
+	if (!xhci->devs[slot_id])
+		return NULL;
+
 	ep = &xhci->devs[slot_id]->eps[ep_index];
 	/* Common case: no streams */
 	if (!(ep->ep_state & EP_HAS_STREAMS))
