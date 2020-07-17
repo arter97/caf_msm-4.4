@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016, 2020 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -65,11 +65,11 @@ struct rmnet_map_ul_checksum_header_s {
 	unsigned short checksum_start_offset;
 #if defined(__LITTLE_ENDIAN_BITFIELD)
 	unsigned short checksum_insert_offset:14;
-	unsigned short udp_ip4_ind:1;
+	unsigned short udp_ind:1;
 	unsigned short cks_en:1;
 #elif defined(__BIG_ENDIAN_BITFIELD)
 	unsigned short cks_en:1;
-	unsigned short udp_ip4_ind:1;
+	unsigned short udp_ind:1;
 	unsigned short checksum_insert_offset:14;
 #else
 #error "Please fix <asm/byteorder.h>"
