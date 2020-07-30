@@ -479,6 +479,7 @@ static const struct file_operations clock_parent_fops = {
 	.write		= clock_parent_write,
 };
 
+#ifdef CONFIG_DEBUG_FS
 void clk_debug_print_hw(struct clk *clk, struct seq_file *f)
 {
 	void __iomem *base;
@@ -507,6 +508,7 @@ void clk_debug_print_hw(struct clk *clk, struct seq_file *f)
 		base = clk->ops->list_registers(clk, j, &regs, &size);
 	}
 }
+#endif
 
 static int print_hw_show(struct seq_file *m, void *unused)
 {
@@ -638,6 +640,7 @@ static int clock_debug_init(void)
 	return 0;
 }
 
+#ifdef CONFIG_DEBUG_FS
 /**
  * clock_debug_register() - Add additional clocks to clock debugfs hierarchy
  * @list: List of clocks to create debugfs nodes for
@@ -681,3 +684,4 @@ void clock_debug_print_enabled(void)
 
 	clock_debug_print_enabled_clocks(NULL);
 }
+#endif
