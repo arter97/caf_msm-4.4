@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -231,6 +231,7 @@ struct dwc3_msm {
 	struct power_supply	*usb_psy;
 	struct work_struct	vbus_draw_work;
 	bool			in_host_mode;
+	bool			in_device_mode;
 	enum usb_device_speed	max_rh_port_speed;
 	unsigned int		tx_fifo_size;
 	bool			vbus_active;
@@ -1969,7 +1970,7 @@ static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc)
 	unsigned long timeout;
 	u32 reg = 0;
 
-	if ((mdwc->in_host_mode || mdwc->vbus_active)
+	if ((mdwc->in_host_mode || mdwc->in_device_mode)
 			&& dwc3_msm_is_superspeed(mdwc) && !mdwc->in_restart) {
 		if (!atomic_read(&mdwc->in_p3)) {
 			dev_err(mdwc->dev, "Not in P3,aborting LPM sequence\n");
@@ -2051,8 +2052,6 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool hibernation)
 {
 	int ret, i;
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
-
-	dbg_event(0xFF, "Ctl Sus", atomic_read(&dwc->in_lpm));
 
 	mutex_lock(&mdwc->suspend_resume_mutex);
 	if (atomic_read(&dwc->in_lpm)) {
@@ -2169,8 +2168,8 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool hibernation)
 	clk_disable_unprepare(mdwc->xo_clk);
 
 	/* Perform controller power collapse */
-	if ((!mdwc->in_host_mode && (!mdwc->vbus_active || mdwc->in_restart)) ||
-								hibernation) {
+	if ((!mdwc->in_host_mode && (!mdwc->in_device_mode ||
+				mdwc->in_restart)) || hibernation) {
 		mdwc->lpm_flags |= MDWC3_POWER_COLLAPSE;
 		dev_dbg(mdwc->dev, "%s: power collapse\n", __func__);
 		dwc3_msm_config_gdsc(mdwc, 0);
@@ -2203,7 +2202,7 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool hibernation)
 	 * using HS_PHY_IRQ or SS_PHY_IRQ. Hence enable wakeup only in
 	 * case of host bus suspend and device bus suspend.
 	 */
-	if (mdwc->vbus_active || mdwc->in_host_mode) {
+	if (mdwc->in_device_mode || mdwc->in_host_mode) {
 		if (!mdwc->no_wakeup_src_in_hostmode)
 			enable_irq_wake(mdwc->hs_phy_irq);
 		enable_irq(mdwc->hs_phy_irq);
@@ -2221,6 +2220,7 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc, bool hibernation)
 	if (test_and_clear_bit(WAIT_FOR_LPM, &mdwc->inputs))
 		schedule_delayed_work(&mdwc->sm_work, 0);
 
+	dbg_event(0xFF, "Ctl Sus", atomic_read(&dwc->in_lpm));
 	mutex_unlock(&mdwc->suspend_resume_mutex);
 
 	return 0;
@@ -3792,6 +3792,7 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		dwc3_msm_block_reset(mdwc, false);
 
 		dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
+		mdwc->in_device_mode = true;
 		usb_gadget_vbus_connect(&dwc->gadget);
 #ifdef CONFIG_SMP
 		mdwc->pm_qos_req_dma.type = PM_QOS_REQ_AFFINE_IRQ;
@@ -3810,6 +3811,7 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		msm_dwc3_perf_vote_update(mdwc, false);
 		pm_qos_remove_request(&mdwc->pm_qos_req_dma);
 
+		mdwc->in_device_mode = false;
 		usb_gadget_vbus_disconnect(&dwc->gadget);
 		usb_phy_notify_disconnect(mdwc->hs_phy, USB_SPEED_HIGH);
 		usb_phy_notify_disconnect(mdwc->ss_phy, USB_SPEED_SUPER);
