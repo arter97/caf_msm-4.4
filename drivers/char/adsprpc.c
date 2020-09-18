@@ -2290,7 +2290,6 @@ static int fastrpc_internal_munmap(struct fastrpc_file *fl,
 	struct hlist_node *n;
 
 	mutex_lock(&fl->internal_map_mutex);
-	mutex_lock(&fl->map_mutex);
 	spin_lock(&fl->hlock);
 	hlist_for_each_entry_safe(rbuf, n, &fl->remote_bufs, hn_rem) {
 		if (rbuf->raddr && (rbuf->flags == ADSP_MMAP_ADD_PAGES)) {
@@ -2309,10 +2308,11 @@ static int fastrpc_internal_munmap(struct fastrpc_file *fl,
 		if (err)
 			goto bail;
 		fastrpc_buf_free(rbuf, 0);
-		mutex_unlock(&fl->map_mutex);
+		mutex_unlock(&fl->internal_map_mutex);
 		return err;
 	}
 
+	mutex_lock(&fl->map_mutex);
 	VERIFY(err, !fastrpc_mmap_remove(fl, ud->vaddrout, ud->size, &map));
 	mutex_unlock(&fl->map_mutex);
 	if (err)
@@ -2344,7 +2344,6 @@ static int fastrpc_internal_mmap(struct fastrpc_file *fl,
 	int err = 0;
 
 	mutex_lock(&fl->internal_map_mutex);
-	mutex_lock(&fl->map_mutex);
 
 	if (ud->flags == ADSP_MMAP_ADD_PAGES) {
 		DEFINE_DMA_ATTRS(dma_attr);
@@ -2370,11 +2369,11 @@ static int fastrpc_internal_mmap(struct fastrpc_file *fl,
 		rbuf->raddr = raddr;
 	} else {
 		uintptr_t va_to_dsp;
-		mutex_lock(&fl->internal_map_mutex);
+		mutex_lock(&fl->map_mutex);
 		VERIFY(err, !fastrpc_mmap_create(fl, ud->fd, 0,
 				(uintptr_t)ud->vaddrin, ud->size,
 				 ud->flags, &map));
-		mutex_unlock(&fl->internal_map_mutex);
+		mutex_unlock(&fl->map_mutex);
 		if (err)
 			goto bail;
 
@@ -2396,7 +2395,6 @@ static int fastrpc_internal_mmap(struct fastrpc_file *fl,
 		fastrpc_mmap_free(map);
 		mutex_unlock(&fl->map_mutex);
 	}
-	mutex_unlock(&fl->map_mutex);
 	mutex_unlock(&fl->internal_map_mutex);
 	return err;
 }
