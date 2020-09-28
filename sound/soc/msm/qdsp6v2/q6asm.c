@@ -98,6 +98,7 @@ static struct asm_mmap this_mmap;
 struct audio_session {
 	struct audio_client *ac;
 	spinlock_t session_lock;
+	struct mutex mutex_lock_per_session;
 	bool ignore;
 };
 /* session id: 0 reserved */
@@ -712,6 +713,7 @@ static void q6asm_session_free(struct audio_client *ac)
 
 	pr_debug("%s: sessionid[%d]\n", __func__, ac->session);
 	session_id = ac->session;
+	mutex_lock(&session[session_id].mutex_lock_per_session);
 	rtac_remove_popp_from_adm_devices(ac->session);
 	spin_lock_irqsave(&(session[session_id].session_lock), flags);
 	session[ac->session].ac = NULL;
@@ -723,6 +725,7 @@ static void q6asm_session_free(struct audio_client *ac)
 	kfree(ac);
 	ac = NULL;
 	spin_unlock_irqrestore(&(session[session_id].session_lock), flags);
+	mutex_unlock(&session[session_id].mutex_lock_per_session);
 
 	return;
 }
@@ -10136,8 +10139,10 @@ static int __init q6asm_init(void)
 
 	memset(session, 0, sizeof(struct audio_session) *
 		(ASM_ACTIVE_STREAMS_ALLOWED + 1));
-	for (lcnt = 0; lcnt <= ASM_ACTIVE_STREAMS_ALLOWED; lcnt++)
+	for (lcnt = 0; lcnt <= ASM_ACTIVE_STREAMS_ALLOWED; lcnt++) {
 		spin_lock_init(&(session[lcnt].session_lock));
+		mutex_init(&(session[lcnt].mutex_lock_per_session));
+	}
 	set_custom_topology = 1;
 
 	/*setup common client used for cal mem map */
