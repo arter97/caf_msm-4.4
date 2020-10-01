@@ -376,7 +376,7 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 	if (prtd->compress_enable) {
 		fmt_type = FORMAT_GEN_COMPR;
 		pr_debug("%s: Compressed enabled!\n", __func__);
-		ret = q6asm_open_write_compressed(prtd->audio_client, fmt_type,
+		ret = q6asm_open_compressed_with_retry(prtd->audio_client, fmt_type,
 				COMPRESSED_PASSTHROUGH_GEN);
 		if (ret < 0) {
 			pr_err("%s: q6asm_open_write_compressed failed (%d)\n",
@@ -400,9 +400,9 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 		if (ret < 0)
 			pr_debug("%s : Send cal failed : %d", __func__, ret);
 	}
+	prtd->session_id = prtd->audio_client->session;
 	pr_debug("%s: session ID %d\n", __func__,
 			prtd->audio_client->session);
-	prtd->session_id = prtd->audio_client->session;
 
 	if (prtd->compress_enable) {
 		ret = msm_pcm_routing_reg_phy_compr_stream(

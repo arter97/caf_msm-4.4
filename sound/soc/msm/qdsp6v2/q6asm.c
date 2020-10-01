@@ -3244,6 +3244,29 @@ fail_cmd:
 	return rc;
 }
 
+int q6asm_open_compressed_with_retry(struct audio_client *ac, uint32_t format, uint32_t passthrough_flag)
+{
+	int i, rc;
+
+	mutex_lock(&session_lock);
+	for (i = 0; i < ASM_ACTIVE_STREAMS_ALLOWED; i++) {
+		pr_debug("%s: session %d\n",  __func__, ac->session);
+		rc = q6asm_open_write_compressed(ac, format, passthrough_flag);
+		if (rc != -EALREADY)
+			break;
+		pr_debug("%s: session %d is occupied, try next\n", __func__, ac->session);
+		q6asm_session_set_ignore(ac->session);
+		rc = q6asm_session_try_next(ac);
+		if (rc < 0)
+			break;
+	}
+	q6asm_session_clean_ignore();
+	mutex_unlock(&session_lock);
+
+	return rc;
+}
+EXPORT_SYMBOL(q6asm_open_compressed_with_retry);
+
 static int __q6asm_open_write(struct audio_client *ac, uint32_t format,
 			      uint16_t bits_per_sample, uint32_t stream_id,
 			      bool is_gapless_mode,
@@ -3549,6 +3572,52 @@ int q6asm_stream_open_write_v4(struct audio_client *ac, uint32_t format,
 				  PCM_MEDIA_FORMAT_V4 /*pcm_format_block_ver*/);
 }
 EXPORT_SYMBOL(q6asm_stream_open_write_v4);
+
+/*
+ * q6asm_stream_open_write_v4 - Creates audio stream for playback
+ *
+ * @ac: Client session handle
+ * @format: asm playback format
+ * @bits_per_sample: bit width of requested stream
+ * @stream_id: stream id of stream to be associated with this session
+ * @is_gapless_mode: true if gapless mode needs to be enabled
+ */
+
+int q6asm_stream_open_write_v5(struct audio_client *ac, uint32_t format,
+			       uint16_t bits_per_sample, int32_t stream_id,
+			       bool is_gapless_mode)
+{
+	return __q6asm_open_write(ac, format, bits_per_sample,
+				  stream_id, is_gapless_mode,
+				  PCM_MEDIA_FORMAT_V5 /*pcm_format_block_ver*/);
+}
+EXPORT_SYMBOL(q6asm_stream_open_write_v5);
+
+
+int q6asm_stream_open_write_with_retry(struct audio_client *ac, uint32_t format,
+           uint16_t bits_per_sample, int32_t stream_id,
+           bool is_gapless_mode)
+{
+	int i, rc;
+
+	mutex_lock(&session_lock);
+	for (i = 0; i < ASM_ACTIVE_STREAMS_ALLOWED; i++) {
+		pr_debug("%s: session %d \n", __func__, ac->session);
+		rc = q6asm_stream_open_write_v4(ac, format, bits_per_sample, stream_id, is_gapless_mode);
+		if (rc != -EALREADY)
+			break;
+		pr_debug("%s: session %d is occupied, try next\n", __func__, ac->session);
+		q6asm_session_set_ignore(ac->session);
+		rc = q6asm_session_try_next(ac);
+		if (rc < 0)
+			break;
+	}
+	q6asm_session_clean_ignore();
+	mutex_unlock(&session_lock);
+
+        return rc;
+}
+EXPORT_SYMBOL(q6asm_stream_open_write_with_retry);
 
 static int __q6asm_open_read_write(struct audio_client *ac, uint32_t rd_format,
 				   uint32_t wr_format, bool is_meta_data_mode,
