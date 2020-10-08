@@ -791,6 +791,11 @@ void msm_gem_describe_objects(struct list_head *list, struct seq_file *m)
 
 	list_for_each_entry(msm_obj, list, mm_list) {
 		struct drm_gem_object *obj = &msm_obj->base;
+
+		/* obj->dev is NULL means the allocation is on-going */
+		if (obj->dev == NULL)
+			continue;
+
 		seq_printf(m, "   ");
 		msm_gem_describe(obj, m);
 		count++;
