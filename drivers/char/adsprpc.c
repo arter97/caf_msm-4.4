@@ -65,11 +65,6 @@
 #define UL_SIZE 25
 #define PID_SIZE 10
 
-#define ADSP_DOMAIN_ID (0)
-#define MDSP_DOMAIN_ID (1)
-#define CDSP_DOMAIN_ID (2)
-#define SDSP_DOMAIN_ID (3)
-
 #define RPC_TIMEOUT	(5 * HZ)
 #define BALIGN		128
 #define NUM_CHANNELS	4		/* adsp,sdsp,mdsp,cdsp */
