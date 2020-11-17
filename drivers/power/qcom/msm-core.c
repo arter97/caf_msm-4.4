@@ -513,7 +513,7 @@ static long msm_core_ioctl(struct file *file, unsigned int cmd,
 
 		mutex_lock(&policy_update_mutex);
 		node = &activity[cpu];
-		if (!node->sp->table) {
+		if (!node->sp->table || !node->sp->voltage) {
 			ret = -EINVAL;
 			goto unlock;
 		}
@@ -521,13 +521,13 @@ static long msm_core_ioctl(struct file *file, unsigned int cmd,
 				node->sp->voltage,
 				sizeof(uint32_t) * node->sp->num_of_freqs);
 		if (ret)
-			break;
+			goto unlock;
 		for (i = 0; i < node->sp->num_of_freqs; i++) {
 			ret = copy_to_user((void __user *)&argp->freq[i],
 					&node->sp->table[i].frequency,
 					sizeof(uint32_t));
 			if (ret)
-				break;
+				goto unlock;
 		}
 unlock:
 		mutex_unlock(&policy_update_mutex);
@@ -1072,12 +1072,12 @@ static int msm_core_dev_probe(struct platform_device *pdev)
 
 	ret = msm_core_params_init(pdev);
 	if (ret)
-		goto failed;
+		goto failed_core_params;
 
 	INIT_DEFERRABLE_WORK(&sampling_work, samplequeue_handle);
 	ret = msm_core_task_init(&pdev->dev);
 	if (ret)
-		goto failed;
+		goto failed_core_params;
 
 	for_each_possible_cpu(cpu)
 		set_threshold(&activity[cpu]);
@@ -1086,6 +1086,9 @@ static int msm_core_dev_probe(struct platform_device *pdev)
 	cpufreq_register_notifier(&cpu_policy, CPUFREQ_POLICY_NOTIFIER);
 	pm_notifier(system_suspend_handler, 0);
 	return 0;
+
+failed_core_params:
+	misc_deregister(&msm_core_device);
 failed:
 	info = dev_get_drvdata(&pdev->dev);
 	uio_unregister_device(info);
