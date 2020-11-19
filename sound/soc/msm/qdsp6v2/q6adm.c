@@ -1452,11 +1452,14 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 			switch (payload[0]) {
 			case ADM_CMD_SET_PP_PARAMS_V5:
 			case ADM_CMD_SET_PP_PARAMS_V6:
-				pr_debug("%s: ADM_CMD_SET_PP_PARAMS\n",
-					 __func__);
+				pr_debug("%s: ADM_CMD_SET_PP_PARAMS, port_id: 0x%x\n",
+					 __func__, data->dest_port);
 				if (client_id == ADM_CLIENT_ID_SOURCE_TRACKING)
 					this_adm.sourceTrackingData.
 						apr_cmd_status = payload[1];
+				else if (!q6audio_validate_port(data->dest_port))
+					pr_debug("%s: resp for adm, port_id: 0x%x\n",
+						__func__, data->dest_port);
 				else if (rtac_make_adm_callback(payload,
 							data->payload_size))
 					break;
@@ -1603,6 +1606,9 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 			if (client_id == ADM_CLIENT_ID_SOURCE_TRACKING)
 				this_adm.sourceTrackingData.apr_cmd_status =
 					payload[0];
+			else if (!q6audio_validate_port(data->dest_port))
+				pr_debug("%s: resp for adm, port_id: 0x%x\n",
+					__func__, data->dest_port);
 			else if (rtac_make_adm_callback(payload,
 							data->payload_size))
 				break;
