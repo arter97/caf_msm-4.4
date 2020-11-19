@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -962,8 +962,10 @@ void rtac_set_asm_handle(u32 session_id, void *handle)
 	pr_debug("%s\n", __func__);
 
 	mutex_lock(&rtac_asm_apr_mutex);
-	if (rtac_asm_apr_data[session_id].apr_handle)
-		rtac_asm_apr_data[session_id].apr_handle = handle;
+	pr_info("%s: rtac_asm_apr_data[%d].apr_handle = 0x%pK, handle =  0x%pK\n",
+		__func__, session_id, rtac_asm_apr_data[session_id].apr_handle,
+		handle);
+	rtac_asm_apr_data[session_id].apr_handle = handle;
 	mutex_unlock(&rtac_asm_apr_mutex);
 }
 
