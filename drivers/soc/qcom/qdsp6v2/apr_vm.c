@@ -551,11 +551,15 @@ static int apr_vm_cb_thread(void *data)
 
 		status = apr_vm_cb_process_evt(apr_rx_buf, apr_rx_buf_len);
 
+#ifdef APRV2_VM_BE_ASYNC_SEND_RSP
 		apr_ack.status = status;
 		ret = habmm_socket_send(hab_handle_rx,
 				(void *)&apr_ack,
 				sizeof(apr_ack),
 				0);
+#else
+		ret = status;
+#endif
 		if (ret) {
 			pr_err("%s: habmm_socket_send failed %d\n",
 					__func__, ret);
@@ -815,6 +819,7 @@ int apr_send_pkt(void *handle, uint32_t *buf)
 				__func__, ret);
 		goto done;
 	}
+#ifdef APRV2_VM_BE_ASYNC_SEND_RSP
 	/* wait for response */
 	apr_rsp_len = sizeof(apr_rsp);
 	ret = apr_vm_nb_receive(hab_handle_tx,
@@ -833,6 +838,7 @@ int apr_send_pkt(void *handle, uint32_t *buf)
 		ret = -ECOMM;
 		goto done;
 	}
+#endif
 
 	/* upon successful send, return packet size */
 	ret = hdr->pkt_size;
