@@ -1981,10 +1981,7 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 		switch (payload[0]) {
 		case ASM_STREAM_CMD_SET_PP_PARAMS_V2:
 		case ASM_STREAM_CMD_SET_PP_PARAMS_V3:
-			if (!q6audio_validate_port(data->dest_port))
-				pr_debug("%s: resp for asm, port_id: 0x%x\n",
-					__func__, data->dest_port);
-			else if (rtac_make_asm_callback(ac->session, payload,
+			if (rtac_make_asm_callback(ac->session, payload,
 					data->payload_size))
 				break;
 		case ASM_SESSION_CMD_PAUSE:
