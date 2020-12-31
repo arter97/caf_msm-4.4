@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2017,2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2017,2020-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -342,6 +342,7 @@ int kgsl_allocate_user(struct kgsl_device *device,
 	int ret;
 
 	memdesc->flags = flags;
+	spin_lock_init(&memdesc->lock);
 
 	if (kgsl_mmu_get_mmutype(device) == KGSL_MMU_TYPE_NONE)
 		ret = kgsl_sharedmem_alloc_contig(device, memdesc, size);
