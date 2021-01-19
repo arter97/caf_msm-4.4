@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -4059,12 +4059,16 @@ static int dwc3_msm_pm_prepare(struct device *dev)
 
 	dev_dbg(dev, "dwc3-msm PM prepare,lpm:%u\n", atomic_read(&dwc->in_lpm));
 	dbg_event(0xFF, "PM Prep", 0);
+
+	/* Fail suspend if sm_work is pending or running */
+	if (work_busy(&mdwc->sm_work.work))
+		return -EBUSY;
+
 	if (!mdwc->in_host_mode || !mdwc->no_wakeup_src_in_hostmode)
 		return 0;
 
 	hcd = dev_get_drvdata(&dwc->xhci->dev);
 	xhci = hcd_to_xhci(hcd);
-	flush_delayed_work(&mdwc->sm_work);
 
 	/* If in lpm then prevent usb core to runtime_resume from pm_suspend */
 	if (atomic_read(&dwc->in_lpm)) {
