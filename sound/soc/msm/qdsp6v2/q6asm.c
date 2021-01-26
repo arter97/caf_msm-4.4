@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2019, 2021 The Linux Foundation. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -2020,37 +2020,37 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 		case ASM_DATA_CMD_REMOVE_TRAILING_SILENCE:
 		case ASM_SESSION_CMD_REGISTER_FOR_RX_UNDERFLOW_EVENTS:
 		case ASM_STREAM_CMD_OPEN_WRITE_COMPRESSED:
-			if (data->payload_size >=
-				2 * sizeof(uint32_t) &&
-				payload[1] != 0) {
-				pr_debug("%s: session %d opcode 0x%x token 0x%x Payload = [0x%x] stat 0x%x src %d dest %d\n",
-					__func__, ac->session,
-					data->opcode, data->token,
-					payload[0], payload[1],
-					data->src_port, data->dest_port);
-				pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
-					__func__,
-					payload[0],
-					payload[1]);
-				if (wakeup_flag) {
-					if ((is_adsp_reg_event(payload[0]) >= 0)
-					|| (payload[0] ==
-					ASM_STREAM_CMD_SET_PP_PARAMS_V2)
-					|| (payload[0] ==
-					 ASM_STREAM_CMD_SET_PP_PARAMS_V3))
-						atomic_set(
-							&ac->cmd_state_pp,
-							payload[1]);
-					else
-						atomic_set(
-							&ac->cmd_state,
-							payload[1]);
-					wake_up(&ac->cmd_wait);
+			if (data->payload_size >= 2 * sizeof(uint32_t)) {
+				if (payload[1] != 0) {
+					pr_debug("%s: session %d opcode 0x%x token 0x%x Payload = [0x%x] stat 0x%x src %d dest %d\n",
+						__func__, ac->session,
+						data->opcode, data->token,
+						payload[0], payload[1],
+						data->src_port, data->dest_port);
+					pr_err("%s: cmd = 0x%x returned error = 0x%x\n",
+						__func__,
+						payload[0],
+						payload[1]);
+					if (wakeup_flag) {
+						if ((is_adsp_reg_event(payload[0]) >= 0)
+						|| (payload[0] ==
+						ASM_STREAM_CMD_SET_PP_PARAMS_V2)
+						|| (payload[0] ==
+						 ASM_STREAM_CMD_SET_PP_PARAMS_V3))
+							atomic_set(
+								&ac->cmd_state_pp,
+								payload[1]);
+						else
+							atomic_set(
+								&ac->cmd_state,
+								payload[1]);
+						wake_up(&ac->cmd_wait);
+					}
+					spin_unlock_irqrestore(
+						&(session[session_id].session_lock),
+						flags);
+					return 0;
 				}
-				spin_unlock_irqrestore(
-					&(session[session_id].session_lock),
-					flags);
-				return 0;
 			} else {
 				pr_err("%s: payload size of %x is less than expected.\n",
 					__func__, data->payload_size);
