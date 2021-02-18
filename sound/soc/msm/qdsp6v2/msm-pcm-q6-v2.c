@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -168,6 +168,12 @@ static void event_handler(uint32_t opcode,
 			break;
 		if (!prtd->mmap_flag || prtd->reset_event)
 			break;
+		/* Added appl_ptr checking to make sure the freshness of the buffer
+		* specifically for MMAP mode, since the cpu avail buffer was blindly
+		* picked up regardless the freshness */
+		if (prtd->appl_ptr == prtd->substream->runtime->control->appl_ptr)
+			break;
+		prtd->appl_ptr = prtd->substream->runtime->control->appl_ptr;
 		if (q6asm_is_cpu_buf_avail_nolock(IN,
 				prtd->audio_client,
 				&size, &idx)) {
@@ -279,6 +285,7 @@ static void event_handler(uint32_t opcode,
 						prtd->pcm_count,
 						0, 0, NO_TIMESTAMP);
 				}
+				prtd->appl_ptr = prtd->substream->runtime->control->appl_ptr;
 			} else {
 				while (atomic_read(&prtd->out_needed)) {
 					pr_debug("%s:writing %d bytes of buffer to dsp\n",

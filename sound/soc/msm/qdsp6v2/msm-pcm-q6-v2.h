@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2008 Google, Inc.
  * Copyright (C) 2008 HTC Corporation
- * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018, 2021 The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -111,6 +111,7 @@ struct msm_audio {
 	bool compress_enable;
 	/* array of frame info */
 	struct msm_audio_in_frame_info in_frame_info[CAPTURE_MAX_NUM_PERIODS];
+	snd_pcm_uframes_t appl_ptr;
 };
 
 struct output_meta_data_st {
