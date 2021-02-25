@@ -817,7 +817,7 @@ static int allocate_extra_arg_buffer(struct scm_desc *desc, gfp_t flags)
 int scm_call2(u32 fn_id, struct scm_desc *desc)
 {
 	int arglen = desc->arginfo & 0xf;
-	int ret;
+	int ret, retry_count = 0;
 	u64 x0;
 
 	if (unlikely(!is_scm_armv8()))
@@ -829,23 +829,36 @@ int scm_call2(u32 fn_id, struct scm_desc *desc)
 
 	x0 = fn_id | scm_version_mask;
 
-	mutex_lock(&scm_lock);
+	do {
+		mutex_lock(&scm_lock);
 
-	if (SCM_SVC_ID(fn_id) == SCM_SVC_LMH)
-		mutex_lock(&scm_lmh_lock);
+		if (SCM_SVC_ID(fn_id) == SCM_SVC_LMH)
+			mutex_lock(&scm_lmh_lock);
 
-	desc->ret[0] = desc->ret[1] = desc->ret[2] = 0;
+		desc->ret[0] = desc->ret[1] = desc->ret[2] = 0;
 
-	trace_scm_call_start(x0, desc);
+		trace_scm_call_start(x0, desc);
 
-	ret = scm_call_qcpe(x0, desc);
+		ret = scm_call_qcpe(x0, desc);
 
-	trace_scm_call_end(desc);
+		trace_scm_call_end(desc);
 
-	if (SCM_SVC_ID(fn_id) == SCM_SVC_LMH)
-		mutex_unlock(&scm_lmh_lock);
+		if (SCM_SVC_ID(fn_id) == SCM_SVC_LMH)
+			mutex_unlock(&scm_lmh_lock);
 
-	mutex_unlock(&scm_lock);
+		mutex_unlock(&scm_lock);
+
+		/* Sometimes the secure world may be busy waiting for a particular resource.
+		 * In those situations, it is expected that the secure world returns a
+		 * special error code (SCM_V2_EBUSY). Retry any scm_call that fails ,
+		 * with this error code but with a timeout in place */
+		if (ret == SCM_V2_EBUSY)
+			msleep(SCM_EBUSY_WAIT_MS);
+
+		if (retry_count == 33)
+			pr_warn("scm: secure world has been busy for 1 second!\n");
+	} while (ret == SCM_V2_EBUSY && (retry_count++ < SCM_EBUSY_MAX_RETRY));
+
 
 	if (ret < 0)
 		pr_err("scm_call failed: func id %#llx, ret: %d, syscall returns: %#llx, %#llx, %#llx\n",
