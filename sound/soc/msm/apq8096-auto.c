@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2019, 2021 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -577,7 +577,8 @@ static char const *tdm_bit_format_text[] = {"S16_LE", "S24_LE"};
 static char const *mi2s_bit_format_text[] = {"S16_LE", "S24_LE"};
 
 static const char *const ec_ref_ch_text[] = {"Zero", "One", "Two", "Three",
-	"Four", "Five", "Six", "Seven", "Eight"};
+	"Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven",
+	"Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen"};
 
 static char const *ec_ref_bit_format_text[] = {"0", "S16_LE", "S24_LE"};
 
@@ -4470,7 +4471,7 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(32, tdm_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, tdm_bit_format_text),
 	SOC_ENUM_SINGLE_EXT(2, mi2s_bit_format_text),
-	SOC_ENUM_SINGLE_EXT(9, ec_ref_ch_text),
+	SOC_ENUM_SINGLE_EXT(17, ec_ref_ch_text),
 	SOC_ENUM_SINGLE_EXT(3, ec_ref_bit_format_text),
 	SOC_ENUM_SINGLE_EXT(9, ec_ref_rate_text),
 	SOC_ENUM_SINGLE_EXT(3, mi2s_rate_text),
