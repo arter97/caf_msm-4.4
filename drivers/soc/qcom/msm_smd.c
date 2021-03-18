@@ -1519,6 +1519,7 @@ static int smd_stream_write(smd_channel_t *ch, const void *_data, int len,
 	const unsigned char *buf = _data;
 	unsigned xfer;
 	int orig_len = len;
+	unsigned int read_buf;
 
 	SMD_DBG("smd_stream_write() %d -> ch%d\n", len, ch->n);
 	if (len < 0)
@@ -1538,8 +1539,14 @@ static int smd_stream_write(smd_channel_t *ch, const void *_data, int len,
 		ch_write_done(ch, xfer);
 		len -= xfer;
 		buf += xfer;
-		if (len == 0)
+		if (len == 0) {
+			/* readback to make sure previous data is writen */
+			if (is_word_access_ch(ch->type))
+				ch->read_from_fifo(&read_buf, ptr, 4);
+			else
+				ch->read_from_fifo(&read_buf, ptr, 1);
 			break;
+		}
 	}
 
 	if (orig_len - len && intr_ntfy)
