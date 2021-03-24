@@ -171,9 +171,18 @@ static void event_handler(uint32_t opcode,
 		/* Added appl_ptr checking to make sure the freshness of the buffer
 		* specifically for MMAP mode, since the cpu avail buffer was blindly
 		* picked up regardless the freshness */
-		if (prtd->appl_ptr == prtd->substream->runtime->control->appl_ptr)
+		if (prtd->appl_ptr == substream->runtime->control->appl_ptr)
 			break;
-		prtd->appl_ptr = prtd->substream->runtime->control->appl_ptr;
+		pr_debug("appl_ptr %d, prtd->appl_ptr %d, hw_ptr %d\n",
+			substream->runtime->control->appl_ptr,
+			prtd->appl_ptr,
+			substream->runtime->status->hw_ptr);
+		pr_debug("periods %d, dsp queued %d\n",
+			substream->runtime->periods,
+			frames_to_bytes(substream->runtime,
+				prtd->appl_ptr - substream->runtime->status->hw_ptr)
+				/ prtd->pcm_count);
+		prtd->appl_ptr += bytes_to_frames(substream->runtime, prtd->pcm_count);
 		if (q6asm_is_cpu_buf_avail_nolock(IN,
 				prtd->audio_client,
 				&size, &idx)) {
@@ -272,20 +281,39 @@ static void event_handler(uint32_t opcode,
 				atomic_set(&prtd->start, 1);
 				break;
 			}
+			/* Added appl_ptr checking to make sure only refill the buffer to
+			* DSP when starting a new stream or new buffers available to be
+			* queued in DSP for MMAP mode */
 			if (prtd->mmap_flag) {
-				int cnt = prtd->pcm_size / prtd->pcm_count;
-				pr_debug("%s %d:buffer %d, period %d, %d writes\n",
-					__func__, __LINE__,
-					prtd->pcm_size, prtd->pcm_count, cnt);
-				while (cnt--) {
+				if(prtd->appl_ptr == 0)
+					size = frames_to_bytes(substream->runtime,
+							substream->runtime->control->appl_ptr
+							- substream->runtime->status->hw_ptr);
+				else
+					size = frames_to_bytes(substream->runtime,
+							substream->runtime->control->appl_ptr
+							- prtd->appl_ptr);
+				atomic_set(&prtd->out_needed, size / prtd->pcm_count);
+				pr_debug("write size %d, out_needed %d\n", size, prtd->out_needed);
+				pr_debug("appl_ptr %d, prtd->appl_ptr %d, hw_ptr %d\n",
+					substream->runtime->control->appl_ptr,
+					prtd->appl_ptr,
+					substream->runtime->status->hw_ptr);
+				pr_debug("periods %d, dsp queued %d\n",
+					substream->runtime->periods,
+					frames_to_bytes(substream->runtime,
+						prtd->appl_ptr - substream->runtime->status->hw_ptr)
+						/ prtd->pcm_count);
+				while (atomic_read(&prtd->out_needed)) {
 					pr_debug("%s %d:writing %d bytes of buffer to dsp\n",
 						__func__, __LINE__,
 						prtd->pcm_count);
 					q6asm_write_nolock(prtd->audio_client,
 						prtd->pcm_count,
 						0, 0, NO_TIMESTAMP);
+					atomic_dec(&prtd->out_needed);
 				}
-				prtd->appl_ptr = prtd->substream->runtime->control->appl_ptr;
+				prtd->appl_ptr = substream->runtime->control->appl_ptr;
 			} else {
 				while (atomic_read(&prtd->out_needed)) {
 					pr_debug("%s:writing %d bytes of buffer to dsp\n",
@@ -1125,6 +1153,8 @@ static int msm_pcm_mmap(struct snd_pcm_substream *substream,
 	int dir = -1;
 
 	prtd->mmap_flag = 1;
+	prtd->appl_ptr = 0;
+	pr_debug("mmap appl_ptr = %d\n", prtd->appl_ptr);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		dir = IN;
