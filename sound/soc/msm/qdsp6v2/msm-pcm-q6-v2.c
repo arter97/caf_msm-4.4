@@ -173,6 +173,11 @@ static void event_handler(uint32_t opcode,
 		* picked up regardless the freshness */
 		if (prtd->appl_ptr == substream->runtime->control->appl_ptr)
 			break;
+		size = frames_to_bytes(substream->runtime,
+				substream->runtime->control->appl_ptr
+				- prtd->appl_ptr);
+		atomic_set(&prtd->out_needed, size / prtd->pcm_count);
+		pr_debug("write size %d, out_needed %d\n", size, prtd->out_needed);
 		pr_debug("appl_ptr %d, prtd->appl_ptr %d, hw_ptr %d\n",
 			substream->runtime->control->appl_ptr,
 			prtd->appl_ptr,
@@ -182,14 +187,18 @@ static void event_handler(uint32_t opcode,
 			frames_to_bytes(substream->runtime,
 				prtd->appl_ptr - substream->runtime->status->hw_ptr)
 				/ prtd->pcm_count);
-		prtd->appl_ptr += bytes_to_frames(substream->runtime, prtd->pcm_count);
-		if (q6asm_is_cpu_buf_avail_nolock(IN,
-				prtd->audio_client,
-				&size, &idx)) {
-			pr_debug("%s:writing %d bytes of buffer to dsp 2\n",
-					__func__, prtd->pcm_count);
-			q6asm_write_nolock(prtd->audio_client,
-				prtd->pcm_count, 0, 0, NO_TIMESTAMP);
+		while (atomic_read(&prtd->out_needed)) {
+			if (q6asm_is_cpu_buf_avail_nolock(IN,
+					prtd->audio_client,
+					&size, &idx)) {
+				pr_debug("%s:writing %d bytes of buffer to dsp 2\n",
+						__func__, prtd->pcm_count);
+				q6asm_write_nolock(prtd->audio_client,
+					prtd->pcm_count, 0, 0, NO_TIMESTAMP);
+			}
+			atomic_dec(&prtd->out_needed);
+			prtd->appl_ptr += bytes_to_frames(substream->runtime,
+					prtd->pcm_count);
 		}
 		break;
 	}
@@ -197,6 +206,10 @@ static void event_handler(uint32_t opcode,
 		pr_debug("ASM_DATA_EVENT_RENDERED_EOS\n");
 		clear_bit(CMD_EOS, &prtd->cmd_pending);
 		wake_up(&the_locks.eos_wait);
+		if (prtd->mmap_flag) {
+			prtd->appl_ptr = 0;
+			pr_debug("mmap reset appl_ptr = %d\n", prtd->appl_ptr);
+		}
 		break;
 	case ASM_DATA_EVENT_READ_DONE_V2: {
 		pr_debug("ASM_DATA_EVENT_READ_DONE_V2\n");
