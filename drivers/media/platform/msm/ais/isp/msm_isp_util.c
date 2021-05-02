@@ -14,6 +14,7 @@
 #include <linux/io.h>
 #include <media/v4l2-subdev.h>
 #include <linux/ratelimit.h>
+#include <soc/qcom/boot_stats.h>
 
 #include "msm.h"
 #include "msm_isp_util.h"
@@ -2293,6 +2294,7 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	/* Postpone hardware changes until early camera is complete */
 	msm_early_camera_wait();
+	place_marker("M - LK Cam kill Signal Recv");
 
 	if (vfe_dev->hw_info->vfe_ops.core_ops.init_hw(vfe_dev) < 0) {
 		pr_err("%s: init hardware failed\n", __func__);

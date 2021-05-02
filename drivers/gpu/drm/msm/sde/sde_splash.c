@@ -15,6 +15,7 @@
 #include <linux/debugfs.h>
 #include <linux/memblock.h>
 #include <soc/qcom/early_domain.h>
+#include <soc/qcom/boot_stats.h>
 #include <linux/suspend.h>
 
 #include "msm_drv.h"
@@ -189,6 +190,7 @@ static inline void _sde_splash_notify_lk_stop_splash(void)
 	int i = 0;
 	int32_t *scratch_pad = NULL;
 
+	place_marker("M - Disp Dri Send kill LK signal");
 	/* request Lk to stop splash */
 	request_early_service_shutdown(EARLY_DISPLAY);
 
