@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016,2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -402,8 +402,6 @@ long kgsl_compat_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 	if (ret == -ENOIOCTLCMD) {
 		if (device->ftbl->compat_ioctl != NULL)
 			return device->ftbl->compat_ioctl(dev_priv, cmd, arg);
-
-		KGSL_DRV_INFO(device, "invalid ioctl code 0x%08X\n", cmd);
 	}
 
 	return ret;
