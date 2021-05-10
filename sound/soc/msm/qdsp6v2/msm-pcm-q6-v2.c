@@ -171,12 +171,22 @@ static void event_handler(uint32_t opcode,
 		/* Added appl_ptr checking to make sure the freshness of the buffer
 		* specifically for MMAP mode, since the cpu avail buffer was blindly
 		* picked up regardless the freshness */
-		if (prtd->appl_ptr == substream->runtime->control->appl_ptr)
+		if (prtd->appl_ptr >= substream->runtime->control->appl_ptr) {
+			pr_err("ERROR: appl_ptr %d, prtd->appl_ptr %d, hw_ptr %d\n",
+				substream->runtime->control->appl_ptr,
+				prtd->appl_ptr,
+				substream->runtime->status->hw_ptr);
 			break;
+		}
 		size = frames_to_bytes(substream->runtime,
-				substream->runtime->control->appl_ptr
-				- prtd->appl_ptr);
+			substream->runtime->control->appl_ptr
+			- prtd->appl_ptr);
 		atomic_set(&prtd->out_needed, size / prtd->pcm_count);
+		if (atomic_read(&prtd->out_needed) > substream->runtime->periods) {
+			pr_err("ERROR: out_needed %d > periods %d\n",
+				prtd->out_needed, substream->runtime->periods);
+			atomic_set(&prtd->out_needed, substream->runtime->periods);
+		}
 		pr_debug("write size %d, out_needed %d\n", size, prtd->out_needed);
 		pr_debug("appl_ptr %d, prtd->appl_ptr %d, hw_ptr %d\n",
 			substream->runtime->control->appl_ptr,
@@ -195,6 +205,9 @@ static void event_handler(uint32_t opcode,
 						__func__, prtd->pcm_count);
 				q6asm_write_nolock(prtd->audio_client,
 					prtd->pcm_count, 0, 0, NO_TIMESTAMP);
+			} else {
+				pr_err("ERROR: no buf available!");
+				break;
 			}
 			atomic_dec(&prtd->out_needed);
 			prtd->appl_ptr += bytes_to_frames(substream->runtime,
@@ -298,15 +311,16 @@ static void event_handler(uint32_t opcode,
 			* DSP when starting a new stream or new buffers available to be
 			* queued in DSP for MMAP mode */
 			if (prtd->mmap_flag) {
-				if(prtd->appl_ptr == 0)
-					size = frames_to_bytes(substream->runtime,
-							substream->runtime->control->appl_ptr
-							- substream->runtime->status->hw_ptr);
-				else
-					size = frames_to_bytes(substream->runtime,
-							substream->runtime->control->appl_ptr
-							- prtd->appl_ptr);
+				size = frames_to_bytes(substream->runtime,
+						substream->runtime->control->appl_ptr
+						- prtd->appl_ptr);
 				atomic_set(&prtd->out_needed, size / prtd->pcm_count);
+				if (atomic_read(&prtd->out_needed)
+						> substream->runtime->periods) {
+					pr_err("ERROR: out_needed %d > periods %d\n",
+						prtd->out_needed, substream->runtime->periods);
+					atomic_set(&prtd->out_needed, substream->runtime->periods);
+				}
 				pr_debug("write size %d, out_needed %d\n", size, prtd->out_needed);
 				pr_debug("appl_ptr %d, prtd->appl_ptr %d, hw_ptr %d\n",
 					substream->runtime->control->appl_ptr,
@@ -325,8 +339,9 @@ static void event_handler(uint32_t opcode,
 						prtd->pcm_count,
 						0, 0, NO_TIMESTAMP);
 					atomic_dec(&prtd->out_needed);
+					prtd->appl_ptr += bytes_to_frames(substream->runtime,
+						prtd->pcm_count);
 				}
-				prtd->appl_ptr = substream->runtime->control->appl_ptr;
 			} else {
 				while (atomic_read(&prtd->out_needed)) {
 					pr_debug("%s:writing %d bytes of buffer to dsp\n",
