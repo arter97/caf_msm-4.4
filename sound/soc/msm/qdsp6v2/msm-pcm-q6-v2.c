@@ -205,13 +205,13 @@ static void event_handler(uint32_t opcode,
 						__func__, prtd->pcm_count);
 				q6asm_write_nolock(prtd->audio_client,
 					prtd->pcm_count, 0, 0, NO_TIMESTAMP);
+				atomic_dec(&prtd->out_needed);
+				prtd->appl_ptr += bytes_to_frames(substream->runtime,
+						prtd->pcm_count);
 			} else {
 				pr_err("ERROR: no buf available!");
 				break;
 			}
-			atomic_dec(&prtd->out_needed);
-			prtd->appl_ptr += bytes_to_frames(substream->runtime,
-					prtd->pcm_count);
 		}
 		break;
 	}
@@ -417,6 +417,11 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 	/* rate and channels are sent to audio driver */
 	prtd->samp_rate = runtime->rate;
 	prtd->channel_mode = runtime->channels;
+	/* reset appl_ptr */
+	if (prtd->mmap_flag) {
+		prtd->appl_ptr = 0;
+		pr_debug("mmap reset appl_ptr = %d\n", prtd->appl_ptr);
+	}
 	if (prtd->enabled)
 		return 0;
 
