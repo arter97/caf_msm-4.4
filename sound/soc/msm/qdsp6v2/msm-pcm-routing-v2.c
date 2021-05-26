@@ -2751,12 +2751,28 @@ static const char *const adm_override_chs_text[] = {"Zero", "One", "Two"};
 static SOC_ENUM_SINGLE_EXT_DECL(slim_7_rx_adm_override_chs,
 				adm_override_chs_text);
 
+static const char *const tdm_adm_override_chs_text[] = {"Zero", "One", "Two",
+	"Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven",
+	"Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen"};
+
+static SOC_ENUM_SINGLE_EXT_DECL(tert_tdm_rx0_adm_override_chs,
+				tdm_adm_override_chs_text);
+
+static SOC_ENUM_SINGLE_EXT_DECL(quat_tdm_rx0_adm_override_chs,
+				tdm_adm_override_chs_text);
+
 static int msm_routing_adm_get_backend_idx(struct snd_kcontrol *kcontrol)
 {
 	int backend_id;
 
 	if (strnstr(kcontrol->id.name, "SLIM7_RX", sizeof("SLIM7_RX"))) {
 		backend_id = MSM_BACKEND_DAI_SLIMBUS_7_RX;
+	} else if (strnstr(kcontrol->id.name, "TERT_TDM_RX_0",
+					sizeof("TERT_TDM_RX_0"))) {
+		backend_id = MSM_BACKEND_DAI_TERT_TDM_RX_0;
+	} else if (strnstr(kcontrol->id.name, "QUAT_TDM_RX_0",
+					sizeof("QUAT_TDM_RX_0"))) {
+		backend_id = MSM_BACKEND_DAI_QUAT_TDM_RX_0;
 	} else {
 		pr_err("%s: unsupported backend id: %s",
 			__func__, kcontrol->id.name);
@@ -2804,6 +2820,12 @@ static int msm_routing_adm_channel_config_put(
 
 static const struct snd_kcontrol_new adm_channel_config_controls[] = {
 	SOC_ENUM_EXT("SLIM7_RX ADM Channels", slim_7_rx_adm_override_chs,
+			msm_routing_adm_channel_config_get,
+			msm_routing_adm_channel_config_put),
+	SOC_ENUM_EXT("TERT_TDM_RX_0 ADM Channels", tert_tdm_rx0_adm_override_chs,
+			msm_routing_adm_channel_config_get,
+			msm_routing_adm_channel_config_put),
+	SOC_ENUM_EXT("QUAT_TDM_RX_0 ADM Channels", quat_tdm_rx0_adm_override_chs,
 			msm_routing_adm_channel_config_get,
 			msm_routing_adm_channel_config_put),
 };
