@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2017, 2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1559,6 +1559,7 @@ int __init cpu_clock_8996_early_init(void)
 		cpu_clocks_pro = true;
 		pwrcl_early_boot_rate = PWRCL_EARLY_BOOT_RATE;
 		perfcl_early_boot_rate = PERFCL_EARLY_BOOT_RATE;
+		clk_ops_cpu_8996.disable = NULL;
 	} else if (of_find_compatible_node(NULL, NULL,
 					 "qcom,cpu-clock-8996-v3")) {
 		cpu_clocks_v3 = true;
