@@ -42,6 +42,11 @@ struct a5xx_gpu {
 	uint64_t gpmu_iova;
 	uint32_t gpmu_dwords;
 
+        struct drm_gem_object *dumidr_bo;
+        uint64_t dumidr_iova;
+        uint32_t dumidr_dwords;
+        char *dumpidr_addr;
+
 	uint32_t lm_leakage;
 
 	struct msm_ringbuffer *cur_ring;

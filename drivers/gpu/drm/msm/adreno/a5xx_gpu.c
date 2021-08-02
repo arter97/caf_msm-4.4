@@ -58,10 +58,17 @@ static void a5xx_set_pagetable(struct msm_gpu *gpu, struct msm_ringbuffer *ring,
 	OUT_RING(ring, 0);
 
 	/* Turn on APIV mode to access critical regions */
+	OUT_PKT7(ring, CP_WAIT_FOR_IDLE, 0);
+	OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
 	OUT_PKT4(ring, REG_A5XX_CP_CNTL, 1);
 	OUT_RING(ring, 1);
 
+	/* ==========Add idle indirect cmds ============== */
+
+	/* ===========  End =======*/
+
 	/* Make sure the ME is syncronized before staring the update */
+	OUT_PKT7(ring, CP_WAIT_FOR_IDLE, 0);
 	OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
 
 	/* Execute the table update */
@@ -86,13 +93,19 @@ static void a5xx_set_pagetable(struct msm_gpu *gpu, struct msm_ringbuffer *ring,
 	OUT_RING(ring, upper_32_bits(rbmemptr(ring, contextidr)));
 	OUT_RING(ring, iommu->contextidr);
 
+	/* release all commands with wait_for_me */
+	OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
+	OUT_PKT7(ring, CP_WAIT_FOR_IDLE, 0);
+
 	/* Invalidate the draw state so we start off fresh */
 	OUT_PKT7(ring, CP_SET_DRAW_STATE, 3);
 	OUT_RING(ring, 0x40000);
-	OUT_RING(ring, 1);
+	OUT_RING(ring, 0);
 	OUT_RING(ring, 0);
 
 	/* Turn off APRIV */
+	OUT_PKT7(ring, CP_WAIT_FOR_IDLE, 0);
+	OUT_PKT7(ring, CP_WAIT_FOR_ME, 0);
 	OUT_PKT4(ring, REG_A5XX_CP_CNTL, 1);
 	OUT_RING(ring, 0);
 
@@ -538,6 +551,31 @@ static int a5xx_ucode_init(struct msm_gpu *gpu)
 	return 0;
 }
 
+static int a5xx_dummyidr_init(struct msm_gpu *gpu)
+{
+	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
+	struct a5xx_gpu *a5xx_gpu = to_a5xx_gpu(adreno_gpu);
+	struct drm_device *drm = gpu->dev;
+	unsigned int *ptr;
+
+	ptr = msm_gem_kernel_new(drm, PAGE_SIZE,
+		MSM_BO_UNCACHED | MSM_BO_GPU_READONLY,
+		gpu->aspace, &a5xx_gpu->dumidr_bo,
+		&a5xx_gpu->dumidr_iova);
+
+	if (IS_ERR(ptr)) {
+		return PTR_ERR(ptr);
+	}
+
+	memset(ptr, 0, PAGE_SIZE);
+
+//	ptr[1023] = CP_TYPE7_PKT | ((1) << 0) | (pm4_calc_odd_parity_bit(1) << 15) | (((CP_NOP) & 0x7F) << 16) | ((pm4_calc_odd_parity_bit(CP_NOP) << 23));;
+//  ptr[1023] = PKT4(REG_A5XX_GPMU_INST_RAM_BASE, CP_NOP);
+    ptr[1023] = CP_TYPE3_PKT | ((1-1) << 16) | (((CP_NOP) & 0xFF) << 8);
+
+	return 0;
+}
+
 #ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 
 #include <soc/qcom/subsystem_restart.h>
@@ -896,6 +934,13 @@ static void a5xx_destroy(struct msm_gpu *gpu)
 			msm_gem_put_iova(a5xx_gpu->gpmu_bo, gpu->aspace);
 		drm_gem_object_unreference_unlocked(a5xx_gpu->gpmu_bo);
 	}
+
+	if (a5xx_gpu->dumidr_bo) {
+		if (a5xx_gpu->gpmu_iova)
+			msm_gem_put_iova(a5xx_gpu->dumidr_bo, gpu->aspace);
+		drm_gem_object_unreference_unlocked(a5xx_gpu->dumidr_bo);
+	}
+
 
 	adreno_gpu_cleanup(adreno_gpu);
 	kfree(a5xx_gpu);
@@ -1417,10 +1462,11 @@ struct msm_gpu *a5xx_gpu_init(struct drm_device *dev)
 		return ERR_PTR(ret);
 	}
 
+        a5xx_dummyidr_init(gpu);
 	/* Set up the preemption specific bits and pieces for each ringbuffer */
 	a5xx_preempt_init(gpu);
-
 	a5xx_counters_init(adreno_gpu);
 
 	return gpu;
 }
+

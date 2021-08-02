@@ -35,7 +35,7 @@ struct msm_ringbuffer *msm_ringbuffer_new(struct msm_gpu *gpu, int id,
 
 	ring->gpu = gpu;
 	ring->id = id;
-	ring->bo = msm_gem_new(gpu->dev, MSM_GPU_RINGBUFFER_SZ,
+	ring->bo = msm_gem_new(gpu->dev, MSM_GPU_RINGBUFFER_SZ * 2,
 			MSM_BO_WC);
 	if (IS_ERR(ring->bo)) {
 		ret = PTR_ERR(ring->bo);
