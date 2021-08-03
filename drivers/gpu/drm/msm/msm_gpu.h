@@ -157,7 +157,7 @@ struct msm_gpu_submitqueue {
 };
 
 /* It turns out that all targets use the same ringbuffer size. */
-#define MSM_GPU_RINGBUFFER_SZ SZ_32K
+#define MSM_GPU_RINGBUFFER_SZ (SZ_32K*2)
 #define MSM_GPU_RINGBUFFER_BLKSIZE 32
 
 #define MSM_GPU_RB_CNTL_DEFAULT \
