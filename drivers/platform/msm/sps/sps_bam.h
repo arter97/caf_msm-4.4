@@ -405,6 +405,20 @@ int sps_bam_pipe_enable(struct sps_bam *dev, u32 pipe_index);
 int sps_bam_pipe_disable(struct sps_bam *dev, u32 pipe_index);
 
 /**
+ * Disable a BAM pipe(hw level operation only)
+ *
+ * This function disables a BAM pipe.
+ *
+ * @dev - pointer to BAM device descriptor
+ *
+ * @pipe_index - pipe index
+ *
+ * @return 0 on success, negative value on error
+ *
+ */
+int sps_bam_pipe_disable_stateless(struct sps_bam *dev, u32 pipe_index);
+
+/**
  * Register an event for a BAM pipe
  *
  * This function registers an event for a BAM pipe.

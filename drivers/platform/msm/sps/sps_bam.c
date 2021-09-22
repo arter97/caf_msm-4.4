@@ -1355,6 +1355,18 @@ int sps_bam_pipe_disable(struct sps_bam *dev, u32 pipe_index)
 }
 
 /**
+ * Disable a BAM pipe (hw level operation only)
+ *
+ */
+int sps_bam_pipe_disable_stateless(struct sps_bam *dev, u32 pipe_index)
+{
+	bam_clear_irq(&dev->base, dev->props.ee);
+	bam_pipe_disable(&dev->base, pipe_index);
+
+	return 0;
+}
+
+/**
  * Register an event for a BAM pipe
  *
  */

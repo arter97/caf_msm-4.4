@@ -170,6 +170,17 @@ void bam_exit(void *base, u32 ee);
  */
 void bam_output_register_content(void *base, u32 ee);
 
+/**
+ * BAM clear IRQ for all pipes
+ *
+ * This function Clear BAM IRQ for all pipes.
+ *
+ * @base - BAM virtual base address.
+ *
+ * @ee - BAM execution environment index
+ *
+ */
+void bam_clear_irq(void *base, u32 ee);
 
 /**
  * Get BAM IRQ source and clear global IRQ status

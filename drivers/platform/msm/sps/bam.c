@@ -1184,6 +1184,25 @@ void bam_output_register_content(void *base, u32 ee)
 }
 
 /**
+ * BAM clear IRQ for all pipes
+ */
+void bam_clear_irq(void *base, u32 ee)
+{
+	static u32 flag = 1;
+	u32 i;
+	u32 num_pipes;
+
+	if(flag)
+	{
+		num_pipes = bam_read_reg_field(base, NUM_PIPES, 0, BAM_NUM_PIPES);
+		for (i = 0; i < num_pipes; i++)
+			bam_write_reg(base, P_IRQ_EN, i, 0);
+		bam_write_reg_field(base, IRQ_SRCS_MSK_EE, ee, (1<<num_pipes)-1, 0);
+		flag = 0;
+	}
+}
+
+/**
  * Get BAM IRQ source and clear global IRQ status
  */
 u32 bam_check_irq_source(void *base, u32 ee, u32 mask,

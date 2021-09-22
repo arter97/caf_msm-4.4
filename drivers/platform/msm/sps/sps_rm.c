@@ -742,6 +742,14 @@ int sps_rm_state_change(struct sps_pipe *pipe, u32 state)
 			params.irq_gen_addr = pipe->connect.irq_gen_addr;
 			params.irq_gen_data = pipe->connect.irq_gen_data;
 		}
+		result = sps_bam_pipe_disable_stateless(pipe->bam, pipe->pipe_index);
+		if (result) {
+			SPS_ERR(pipe->bam,
+				"sps:Failed to set BAM %pa pipe %d flow off",
+				&pipe->bam->props.phys_addr,
+				pipe->pipe_index);
+			return SPS_ERROR;
+		}
 		result = sps_bam_pipe_connect(pipe, &params);
 		if (result) {
 			SPS_ERR(pipe->bam,
