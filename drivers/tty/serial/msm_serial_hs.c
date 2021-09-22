@@ -2127,7 +2127,10 @@ static void msm_hs_config_port(struct uart_port *uport, int cfg_flags)
 {
 	if (cfg_flags & UART_CONFIG_TYPE)
 		uport->type = PORT_MSM;
+}
 
+static void msm_hs_release_port(struct uart_port *uport)
+{
 }
 
 /*  Handle CTS changes (Called from interrupt handler) */
@@ -3712,6 +3715,14 @@ unmap_memory:
 	return ret;
 }
 
+static int msm_hs_reboot_shutdown(struct platform_device *pdev)
+{
+	debugfs_remove_recursive(debug_base);
+	msm_hs_remove(pdev);
+	uart_unregister_driver(&msm_hs_driver);
+	return 0;
+}
+
 static int __init msm_serial_hs_init(void)
 {
 	int ret;
@@ -3869,6 +3880,7 @@ static const struct dev_pm_ops msm_hs_dev_pm_ops = {
 static struct platform_driver msm_serial_hs_platform_driver = {
 	.probe	= msm_hs_probe,
 	.remove = msm_hs_remove,
+	.shutdown  = msm_hs_reboot_shutdown,
 	.driver = {
 		.name = "msm_serial_hs",
 		.pm   = &msm_hs_dev_pm_ops,
@@ -3898,6 +3910,7 @@ static struct uart_ops msm_hs_ops = {
 	.set_termios = msm_hs_set_termios,
 	.type = msm_hs_type,
 	.config_port = msm_hs_config_port,
+	.release_port = msm_hs_release_port,
 	.flush_buffer = NULL,
 	.ioctl = msm_hs_ioctl,
 };
