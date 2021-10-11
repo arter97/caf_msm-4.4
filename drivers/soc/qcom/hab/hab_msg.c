@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2019, 2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -328,6 +328,53 @@ int hab_msg_recv(struct physical_channel *pchan,
 
 		hab_export_enqueue(vchan, exp_desc); /* for local use */
 		hab_send_export_ack(vchan, pchan, &exp_ack); /* ack exporter */
+		/*
+		 * We should do all the checks here.
+		 * But in order to improve performance, we put the
+		 * checks related to exp->payload_count and
+		 * pfn_table->region[i].size into function pages_list_create.
+		 * So any potential usage of such data from the remote side
+		 * after the checks here and before the checks in
+		 * pages_list_create needs to add some more checks if necessary.
+		 */
+		pfn_table = (struct compressed_pfns *)exp_desc->payload;
+		if (pfn_table->nregions <= 0 ||
+			(pfn_table->nregions >
+			SIZE_MAX / sizeof(struct region)) ||
+			(SIZE_MAX - exp_desc_size_expected <
+			pfn_table->nregions * sizeof(struct region))) {
+			pr_err("%s nregions is too large or negative, nregions:%d!\n",
+					pchan->name, pfn_table->nregions);
+			kfree(exp_desc);
+			break;
+		}
+
+		if (pfn_table->nregions > exp_desc->payload_count) {
+			pr_err("%s nregions %d greater than payload_count %d\n",
+				pchan->name, pfn_table->nregions,
+				exp_desc->payload_count);
+			kfree(exp_desc);
+			break;
+		}
+
+		if (exp_desc->payload_count > MAX_EXP_PAYLOAD_COUNT) {
+			pr_err("payload_count out of range: %d size overflow\n",
+				exp_desc->payload_count);
+			kfree(exp_desc);
+			break;
+		}
+
+		exp_desc_size_expected +=
+			pfn_table->nregions * sizeof(struct region);
+		if (sizebytes != exp_desc_size_expected) {
+			pr_err("%s exp size not equal %zu expect %zu\n",
+				pchan->name, sizebytes, exp_desc_size_expected);
+			kfree(exp_desc);
+			break;
+		}
+
+		hab_export_enqueue(vchan, exp_desc);
+		hab_send_export_ack(vchan, pchan, exp_desc);
 		break;
 
 	case HAB_PAYLOAD_TYPE_EXPORT_ACK:
