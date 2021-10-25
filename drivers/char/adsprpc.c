@@ -1969,7 +1969,7 @@ static int fastrpc_init_process(struct fastrpc_file *fl,
 
 		if (!init->filelen)
 			goto bail;
-		VERIFY(err, proc_name = kzalloc(init->filelen, GFP_KERNEL));
+		VERIFY(err, proc_name = kzalloc(init->filelen + 1, GFP_KERNEL));
 		if (err)
 			goto bail;
 		VERIFY(err, 0 == copy_from_user(proc_name,
