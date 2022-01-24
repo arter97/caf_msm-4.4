@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2019, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -121,7 +122,6 @@ static int q6asm_memory_map_regions(struct audio_client *ac, int dir,
 				uint32_t bufsz, uint32_t bufcnt,
 				bool is_contiguous);
 static int q6asm_memory_unmap_regions(struct audio_client *ac, int dir);
-static void q6asm_reset_buf_state(struct audio_client *ac);
 
 static int q6asm_map_channels(u8 *channel_mapping, uint32_t channels,
 				bool use_back_flavor);
@@ -9504,7 +9504,7 @@ int q6asm_send_meta_data(struct audio_client *ac, uint32_t initial_samples,
 				     trailing_samples);
 }
 
-static void q6asm_reset_buf_state(struct audio_client *ac)
+void q6asm_reset_buf_state(struct audio_client *ac)
 {
 	int cnt = 0;
 	int loopcnt = 0;

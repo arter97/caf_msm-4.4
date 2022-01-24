@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -420,7 +421,8 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 	/* reset appl_ptr */
 	if (prtd->mmap_flag) {
 		prtd->appl_ptr = 0;
-		pr_debug("mmap reset appl_ptr = %d\n", prtd->appl_ptr);
+		q6asm_reset_buf_state(prtd->audio_client);
+		pr_debug("mmap reset buf_state & appl_ptr = %d\n", prtd->appl_ptr);
 	}
 	if (prtd->enabled)
 		return 0;

@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -417,6 +418,7 @@ void *q6asm_is_cpu_buf_avail_nolock(int dir, struct audio_client *ac,
 
 int q6asm_is_dsp_buf_avail(int dir, struct audio_client *ac);
 
+void q6asm_reset_buf_state(struct audio_client *ac);
 /* File format specific configurations to be added below */
 
 int q6asm_enc_cfg_blk_aac(struct audio_client *ac,
