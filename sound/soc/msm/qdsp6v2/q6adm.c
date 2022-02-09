@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2019, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1340,6 +1341,7 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 	int i, j, port_idx, copp_idx, idx, client_id;
 	int num_modules;
 	int ret;
+	bool rtac_adm_flag = false;
 
 	if (data == NULL) {
 		pr_err("%s: data parameter is null\n", __func__);
@@ -1414,6 +1416,10 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 
 	adm_callback_debug_print(data);
 	if (data->payload_size >= sizeof(uint32_t)) {
+		if((data->token) & RTAC_ADM_FLAG) {
+			rtac_adm_flag = true;
+			pr_debug("%s: rtac_adm_flag: true\n", __func__);
+		}
 		copp_idx = (data->token) & 0XFF;
 		port_idx = ((data->token) >> 16) & 0xFF;
 		client_id = ((data->token) >> 8) & 0xFF;
@@ -1457,6 +1463,8 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 				if (client_id == ADM_CLIENT_ID_SOURCE_TRACKING)
 					this_adm.sourceTrackingData.
 						apr_cmd_status = payload[1];
+				else if (!rtac_adm_flag)
+					pr_debug("%s: non rtac adm context\n", __func__);
 				else if (rtac_make_adm_callback(payload,
 							data->payload_size))
 					break;

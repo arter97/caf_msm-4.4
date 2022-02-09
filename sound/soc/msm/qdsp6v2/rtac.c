@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -867,7 +868,7 @@ int send_adm_apr(void *buf, u32 opcode)
 	adm_params.dest_svc = APR_SVC_ADM;
 	adm_params.dest_domain = APR_DOMAIN_ADSP;
 	adm_params.dest_port = copp_id;
-	adm_params.token = port_idx << 16 | copp_idx;
+	adm_params.token = RTAC_ADM_FLAG | port_idx << 16 | copp_idx;
 	adm_params.opcode = opcode;
 
 	/* fill for out-of-band */

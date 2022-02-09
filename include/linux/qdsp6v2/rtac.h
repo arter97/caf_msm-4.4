@@ -1,5 +1,6 @@
 /* Copyright (c) 2011, 2013-2015, 2017, The Linux Foundation. All rights
  * reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,6 +25,8 @@
 
 #define RTAC_MAX_ACTIVE_DEVICES		4
 #define RTAC_MAX_ACTIVE_POPP		8
+
+#define RTAC_ADM_FLAG			0x10000000
 
 #define DEFAULT_APP_TYPE	0x00011130
 
