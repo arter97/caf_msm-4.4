@@ -2146,6 +2146,7 @@ static int msm_spi_bam_pipe_init(struct msm_spi *dd,
 		pipe_conf->src_pipe_index  =
 					dd->pdata->bam_producer_pipe_index;
 		pipe_conf->dest_pipe_index = 0;
+		sps_pipe_reset(dd->bam.handle, pipe_conf->src_pipe_index);
 	} else {
 		pipe_conf->source          = SPS_DEV_HANDLE_MEM;
 		pipe_conf->destination     = dd->bam.handle;
@@ -2153,6 +2154,7 @@ static int msm_spi_bam_pipe_init(struct msm_spi *dd,
 		pipe_conf->src_pipe_index  = 0;
 		pipe_conf->dest_pipe_index =
 					dd->pdata->bam_consumer_pipe_index;
+		sps_pipe_reset(dd->bam.handle, pipe_conf->dest_pipe_index);
 	}
 	pipe_conf->options = SPS_O_EOT | SPS_O_AUTO_ENABLE;
 	pipe_conf->desc.size = SPI_BAM_MAX_DESC_NUM * sizeof(struct sps_iovec);
@@ -2917,6 +2919,11 @@ static int msm_spi_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void msm_spi_shutdown(struct platform_device *pdev)
+{
+	msm_spi_remove(pdev);
+}
+
 static const struct dev_pm_ops msm_spi_dev_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(msm_spi_suspend, msm_spi_resume)
 	SET_RUNTIME_PM_OPS(msm_spi_pm_suspend_runtime,
@@ -2932,7 +2939,7 @@ static struct platform_driver msm_spi_driver = {
 	},
 	.probe		= msm_spi_probe,
 	.remove		= msm_spi_remove,
-	.probe		= msm_spi_probe,
+	.shutdown	= msm_spi_shutdown,
 };
 
 module_platform_driver(msm_spi_driver);
