@@ -419,6 +419,8 @@ static int qbam_slave_cfg(struct dma_chan *chan,
 		return ret;
 	}
 
+	sps_pipe_reset(qbam_dev->handle, qbam_chan->bam_pipe.index);
+
 	qbam_chan->direction = cfg->direction;
 	if (cfg->direction == DMA_MEM_TO_DEV) {
 		pipe_cfg->source          = SPS_DEV_HANDLE_MEM;
