@@ -6977,6 +6977,12 @@ long qseecom_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		return -ENODEV;
 	}
 
+	if (atomic_read(&qseecom.qseecom_state) == QSEECOM_STATE_NOT_READY) {
+		pr_err("Not allowed to be called in %d state\n",
+		atomic_read(&qseecom.qseecom_state));
+		return -EPERM;
+	}
+
 	switch (cmd) {
 	case QSEECOM_IOCTL_REGISTER_LISTENER_REQ: {
 		if (data->type != QSEECOM_GENERIC) {
