@@ -18,6 +18,7 @@
 #include <linux/time.h>
 #include <linux/math64.h>
 #include <linux/wait.h>
+#include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <sound/core.h>
@@ -106,6 +107,9 @@ struct msm_compr_pdata {
 	struct msm_compr_ch_map *ch_map[MSM_FRONTEND_DAI_MAX];
 	int32_t ion_fd[MSM_FRONTEND_DAI_MAX];
 	bool is_in_use[MSM_FRONTEND_DAI_MAX];
+
+        struct mutex lock;
+
 };
 
 struct msm_compr_audio {
@@ -3142,7 +3146,7 @@ static int msm_compr_volume_put(struct snd_kcontrol *kcontrol,
 			__func__, fe_id);
 		return -EINVAL;
 	}
-
+        mutex_lock(&pdata->lock);
 	cstream = pdata->cstream[fe_id];
 	volume = pdata->volume[fe_id];
 
@@ -3152,6 +3156,7 @@ static int msm_compr_volume_put(struct snd_kcontrol *kcontrol,
 		 __func__, fe_id, volume[0], volume[1]);
 	if (cstream)
 		msm_compr_set_volume(cstream, volume[0], volume[1]);
+	mutex_unlock(&pdata->lock);
 	return 0;
 }
 
